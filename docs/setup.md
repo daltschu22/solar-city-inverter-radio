@@ -98,9 +98,12 @@ exactly 16 hexadecimal digits, without colons, in the ordinary display order.
 The code handles conversion to the wire byte order.
 
 `radio.local.json` is loaded from the working directory. Set `SOLAR_CONFIG` to an
-absolute path to keep it elsewhere. Validation rejects unknown fields, invalid
-ranges, and matching inverter/collector identities. No live radio session can
-start without an explicit, valid config file. Changes require restarting the app.
+absolute path to keep it elsewhere. Environment variables override fields in the
+file and can supply all settings without a JSON file. Validation rejects unknown
+JSON fields, missing required settings, invalid ranges, and matching
+inverter/collector identities. No live radio session can start without valid
+installation settings. Changes require restarting the app. If `SOLAR_CONFIG` is
+set, that file must exist and contain valid JSON even when using overrides.
 
 Run `.venv/bin/python config.py` to validate without opening a connection.
 
@@ -109,11 +112,52 @@ when assigning an address to the known inverter; it is not assumed to be a live
 neighbor. The current verified short address is persisted in SQLite. Keep a
 separate database for each installation.
 
+### Environment variables
+
+| Variable | JSON field | Requirement or default |
+| --- | --- | --- |
+| `SOLAR_RADIO_HOST` | `host` | Required; SMLIGHT hostname or IP |
+| `SOLAR_RADIO_PORT` | `port` | `6638` |
+| `SOLAR_RADIO_CHANNEL` | `channel` | Required; channel `11`–`26` |
+| `SOLAR_PAN_ID` | `pan_id` | Required; observed 16-bit PAN ID |
+| `SOLAR_EXTENDED_PAN_ID` | `extended_pan_id` | Required; observed 64-bit extended PAN ID |
+| `SOLAR_COLLECTOR_EUI` | `collector_eui` | Required; collector identity the inverter expects |
+| `SOLAR_INVERTER_EUI` | `inverter_eui` | Required; inverter radio identity |
+| `SOLAR_INITIAL_ADDRESS` | `initial_address` | `0x2345`; normally leave unset |
+
+Numeric values accept decimal or `0x`-prefixed hexadecimal strings. EUIs use 16
+hexadecimal digits without colons, in the report's display order. Unset variables
+leave the JSON value or optional default intact. Empty variables are invalid;
+they do not fall back to JSON or synthetic identities.
+
+For an environment-only setup, copy and edit the template:
+
+```sh
+cp config.example.env .env
+```
+
+Fill in your bridge address and the five reviewed settings from
+[discovery](discovery.md#apply-reviewed-values). The `.env` file is ignored by
+Git. Python does not read it automatically; export its values in your shell:
+
+```sh
+set -a
+. ./.env
+set +a
+.venv/bin/python config.py
+.venv/bin/python collector.py
+```
+
+Use this after capture has stopped and the original collector is powered off,
+as described in [Start and verify](#start-and-verify). For a new environment-only
+setup, leave `SOLAR_CONFIG` unset and skip creating `radio.local.json`. Your service
+manager can also supply these variables directly.
+
 Additional environment settings:
 
 | Variable | Default and purpose |
 | --- | --- |
-| `SOLAR_CONFIG` | `radio.local.json`; installation configuration |
+| `SOLAR_CONFIG` | `radio.local.json`; optional JSON configuration path |
 | `SOLAR_HISTORY_PATH` | `data/solar-history.sqlite3` beside `collector.py` |
 | `SOLAR_API_BIND` | `127.0.0.1`; collector API listening address |
 | `SOLAR_API_PORT` | `8766`; collector API port |
@@ -184,6 +228,19 @@ hosts may need an appropriate label on the bind mount. Keep a persistent data
 volume. Stop the foreground Python process before starting the container.
 The HTTP port is published to host loopback only. Add your own service management
 or reverse proxy according to your environment.
+
+Alternatively, fill in `.env` as above and supply it to the container without
+mounting a JSON file:
+
+```sh
+podman run --rm --name solar-city-collector --network solar-city \
+  -p 127.0.0.1:8766:8766 \
+  --env-file .env \
+  -v solar-city-inverter-radio-data:/data \
+  solar-city-collector
+```
+
+Keep `.env` private. Do not bake installation values into the image.
 
 For an existing installation, reuse its database volume and config. The database
 schema is unchanged. The former combined `server.py` command now serves only the

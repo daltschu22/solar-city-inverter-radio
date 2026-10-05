@@ -21,21 +21,41 @@ class RadioConfig:
     configured: bool = False
 
 
+ENV_FIELDS = {
+    "host": "SOLAR_RADIO_HOST",
+    "port": "SOLAR_RADIO_PORT",
+    "channel": "SOLAR_RADIO_CHANNEL",
+    "pan_id": "SOLAR_PAN_ID",
+    "extended_pan_id": "SOLAR_EXTENDED_PAN_ID",
+    "collector_eui": "SOLAR_COLLECTOR_EUI",
+    "inverter_eui": "SOLAR_INVERTER_EUI",
+    "initial_address": "SOLAR_INITIAL_ADDRESS",
+}
+
+
 def load_config(path=None):
     explicit = path is not None or "SOLAR_CONFIG" in os.environ
-    path = Path(path or os.environ.get("SOLAR_CONFIG", "radio.local.json"))
-    if not path.exists():
-        if explicit:
-            raise ValueError("SOLAR_CONFIG file does not exist")
-        return RadioConfig()
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        raise ValueError("Cannot read radio configuration JSON") from exc
+    path = Path(path if path is not None else os.environ.get("SOLAR_CONFIG", "radio.local.json"))
+    file_exists = path.exists()
+    data = {}
+    if file_exists:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ValueError("Cannot read radio configuration JSON") from exc
+    elif explicit:
+        raise ValueError("SOLAR_CONFIG file does not exist")
+
     required = {"host", "channel", "pan_id", "extended_pan_id", "collector_eui", "inverter_eui"}
     optional = {"port", "initial_address"}
-    if not isinstance(data, dict) or required - data.keys() or data.keys() - required - optional:
+    if not isinstance(data, dict) or data.keys() - required - optional:
         raise ValueError("Radio configuration has missing or unknown fields; see config.example.json")
+    overrides = {key: os.environ[name] for key, name in ENV_FIELDS.items() if name in os.environ}
+    if not file_exists and not overrides:
+        return RadioConfig()
+    data.update(overrides)
+    if required - data.keys():
+        raise ValueError("Radio configuration has missing fields; see config.example.json or config.example.env")
     if not isinstance(data["host"], str) or not data["host"].strip():
         raise ValueError("Radio host is required")
 
@@ -78,7 +98,7 @@ CONFIG = load_config()
 
 def require_configured():
     if not CONFIG.configured:
-        raise ValueError("Create radio.local.json from config.example.json and set your radio parameters")
+        raise ValueError("Set the radio environment variables or create radio.local.json; see docs/setup.md")
     return CONFIG
 
 

@@ -125,6 +125,10 @@ Run one collector per SMLIGHT. Other consumers share its API.
    which report value goes into each config field. Required fields are blank or
    placeholders; use your own settings. Capture reports and local configs are
    ignored by Git.
+
+   You can also supply all settings through environment variables, without a
+   JSON file, or override selected JSON fields. Copy `config.example.env` to
+   `.env` and follow the [environment setup](docs/setup.md#environment-variables).
 5. Validate without touching the radio:
 
    ```sh
