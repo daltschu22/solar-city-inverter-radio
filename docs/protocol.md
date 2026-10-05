@@ -198,15 +198,17 @@ or APS acknowledgment logic. No original-collector identity is programmed into
 the radio. It verifies monitor mode during periodic transport health checks and
 fails the session if that mode is lost.
 
-The [OpenThread TI radio implementation](https://github.com/openthread/ot-cc13x2-cc26x2/blob/main/src/cc2652/radio.c)
-changes frame filtering for promiscuous reception while retaining its automatic
-ACK setting. Monitor mode alone is therefore not proof of radio silence: the
-unassigned address configuration keeps this receiver from being an addressed
-member of the installation's network. Actual firmware behavior, including absence
-of unintended hardware ACKs, still needs over-the-air validation. The tested TI
-RCP build has omitted ACK-requested unicast traffic during capture; passive mode
-does not fix that firmware limitation. Broadcast discovery traffic alone is not
-enough to collect measurements.
+Monitor mode alone is not proof of radio silence: hardware acknowledgments are
+controlled by the radio firmware, separately from Python's transmit calls. The
+unassigned addresses are a precaution, not a substitute for over-the-air checks.
+
+The official SMLIGHT RCP build used for replacement mode has omitted
+ACK-requested unicast traffic during capture. A diagnostic firmware patch changes
+receive completion for those frames and suppresses automatic acknowledgments in
+monitor mode. Live measurement capture and independent confirmation of ACK silence
+remain unverified; no validated passive firmware package is provided. The Python
+mode setting cannot fix missing radio packets. Broadcast discovery traffic alone
+is not enough to collect measurements.
 
 The streaming matcher requires the configured channel, PAN, both EUIs, direct
 MAC/network addresses, Digi profile/cluster/endpoints, and valid unsecured data.

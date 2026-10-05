@@ -36,8 +36,11 @@ agents helping with setup or changing the project.
 - Power off the original SolarCity/Tesla collector before replacement collection.
   For `SOLAR_COLLECTOR_MODE=passive`, leave the original box operating. Passive
   mode must never transmit, assume its identity, or fall back to replacement.
-  It requires both sides of complete observed exchanges; live SMLIGHT reception
-  remains unverified. Do not change a working installation's mode for routine tests.
+  It requires both sides of complete observed exchanges; live SMLIGHT readings
+  remain unverified. The official firmware is validated for replacement only;
+  passive capture requires a firmware fix still under evaluation. Do not present
+  the mode variable as a complete passive setup or distribute device-specific
+  firmware images. Do not change a working installation's mode for routine tests.
   Establish exclusive bridge access for scans and collection. Act on existing
   authorization; ask when required physical state or service ownership is unknown.
 - Use the user's chosen service manager and persistent storage. Keep local

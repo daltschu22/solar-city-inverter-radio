@@ -10,8 +10,9 @@ readings to SQLite and provides a JSON API.
 | **Passive** (experimental) | Powered on and working | Our collector listens to the original box's requests and the inverter's replies |
 
 Both modes use the same API, history, optional dashboard, and Home Assistant
-integration. Passive reception has not been verified on live hardware, and the
-SMLIGHT firmware can omit the unicast packets it needs. Choose a mode in the
+integration. The official firmware is validated for replacement mode only. Passive
+mode needs reliable unicast capture; a firmware patch is under evaluation, and
+there is no validated passive firmware package yet. Choose a mode in the
 [setup guide](docs/setup.md#choose-how-to-collect-readings).
 
 **Tested inverter: Power-One PVI-5000-OUTD-US-Z** with its SolarCity-era Digi XBee

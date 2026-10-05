@@ -25,10 +25,12 @@ listens for its requests and the inverter's replies, then saves complete matched
 exchanges. It does not issue queries or perform network recovery. The original
 box determines which readings are available and how often they arrive.
 
-Passive mode is experimental and has only been tested in software. SMLIGHT's
-current RCP firmware can omit the unicast packets needed to reconstruct an
-exchange, so live reception still needs validation. Missing packets produce gaps;
-the listener never switches to replacement mode automatically.
+Passive decoding has passed software tests and replay of recorded exchanges,
+but live measurement capture remains unverified. The official SMLIGHT firmware
+can omit the required unicast packets. A capture fix is under evaluation; there
+is no validated passive firmware package yet. Selecting passive mode alone does
+not fix reception. Missing packets produce gaps; the listener never switches to
+replacement mode automatically.
 
 Both options feed the same SQLite history, JSON API, optional dashboard, and
 Home Assistant integration. The radio coordination and query sequence below
@@ -68,7 +70,7 @@ application behavior the inverter expects.
 The SLZB-06U exposes its radio through a network serial bridge. That lets the
 collector run on a machine with no USB connection to the radio.
 
-The tested configuration uses SMLIGHT's CC2652P OpenThread RCP firmware build
+The tested replacement configuration uses SMLIGHT's CC2652P OpenThread RCP firmware build
 `20260304`, a `460800` baud serial bridge, and TCP port `6638`.
 [SMLIGHT documents this firmware mode](https://smlight.tech/manual/slzb-06/guide/thread-matter/).
 

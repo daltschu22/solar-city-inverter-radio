@@ -5,8 +5,10 @@ The collector can run by itself; the dashboard and Home Assistant are optional.
 
 Choose **replacement** mode to retire the SolarCity/Tesla box, or **passive** mode
 to leave it running and listen to its readings. Passive mode is experimental and
-has not been verified on live hardware. The current SMLIGHT RCP firmware can miss
-unicast traffic, so discovery succeeding does not guarantee passive readings.
+has not produced verified live readings in this project. The official firmware
+below is validated for replacement mode only. Passive listening needs a capture
+fix that is still under evaluation; there is no validated passive firmware package
+yet. Changing the mode variable alone does not address that limitation.
 
 Before starting, confirm that your equipment matches the
 [compatibility list and photos](../README.md#compatibility). You will need the
@@ -65,7 +67,8 @@ CC2652P radio**.
 5. **Continue to discovery below.** It connects to the SMLIGHT, prints its radio
    firmware version, and scans for inverter traffic.
 
-The tested radio firmware is **SMLIGHT OpenThread RCP build `20260304`**.
+The tested **replacement-mode** radio firmware is
+**SMLIGHT OpenThread RCP build `20260304`**.
 The web installer may offer a different build; check the version reported by
 discovery. Other builds have not been validated by this project.
 
@@ -123,7 +126,12 @@ The default, `SOLAR_COLLECTOR_MODE=replacement`, takes over the original box's
 radio identity and queries the inverter. The original box must be powered off
 while replacement collection runs.
 
-To keep the original box working alongside this collector, add this line to `.env`:
+For experimental passive collection alongside the original box, select the mode
+below. This enables the listener; it does not install the required radio capture
+fix or establish that the firmware can receive complete exchanges. Use replacement
+mode if you need the hardware-validated setup.
+
+Add this line to `.env`:
 
 ```dotenv
 SOLAR_COLLECTOR_MODE=passive
