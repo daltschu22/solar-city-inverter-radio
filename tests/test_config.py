@@ -76,17 +76,17 @@ assert Coordinator().assigned_address == 0x6789
             with self.assertRaisesRegex(ValueError, "Missing radio environment"):
                 load_config()
 
-    def test_old_json_file_is_never_read(self):
+    def test_configuration_uses_only_environment(self):
         self.path.write_text('{"host":"must-not-be-used.example.invalid"}')
         with chdir(self.directory.name):
             self.assertFalse(load_config().configured)
             with patch.dict(os.environ, self.env):
                 self.assertEqual(load_config().host, "radio.example.invalid")
 
-    def test_legacy_path_variable_reports_migration_even_with_complete_environment(self):
+    def test_unsupported_setting_is_rejected_with_or_without_radio_settings(self):
         for settings in ({}, self.env):
             with self.subTest(configured=bool(settings)), patch.dict(os.environ, {**settings, "SOLAR_CONFIG": str(self.path)}):
-                with self.assertRaisesRegex(ValueError, "no longer supported.*migrate"):
+                with self.assertRaisesRegex(ValueError, "Unsupported setting SOLAR_CONFIG"):
                     load_config()
 
     def test_invalid_environment_settings_are_rejected(self):

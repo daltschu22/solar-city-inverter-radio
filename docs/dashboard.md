@@ -18,8 +18,7 @@ Open <http://127.0.0.1:8765>. The dashboard proxies its read requests to
 `http://127.0.0.1:8766`. You can close the browser or stop/restart this process
 while the collector keeps gathering data.
 
-For a dashboard-only host with Python 3.12+ already installed, `python3 -m dashboard`
-also works without uv or any third-party Python packages.
+On a dashboard-only host with Python 3.12+, run `python3 -m dashboard`.
 
 ## On a different computer
 
@@ -37,9 +36,9 @@ its reachable hostname or IP:
 SOLAR_COLLECTOR_URL=http://COLLECTOR_HOST:8766 python3 -m dashboard
 ```
 
-The browser talks to the dashboard; the dashboard talks to the collector. No
-browser CORS configuration is needed. Both services are unauthenticated, so use
-trusted network access or your own authenticated reverse proxy.
+The browser talks to the dashboard; the dashboard talks to the collector.
+Both services are unauthenticated, so use trusted network access or your own
+authenticated reverse proxy.
 
 | Dashboard setting | Default |
 | --- | --- |
@@ -70,9 +69,8 @@ Container DNS resolves `solar-city-collector` on the shared network. Using
 ## Combined container
 
 Set `SOLAR_DASHBOARD=true` when starting the container to run both programs.
-No different image or build flag is needed. Leave the variable unset (or set
-it to `false`) to run only the collector. Both modes expose the collector API
-on port `8766`; the dashboard adds port `8765`.
+Leave the variable unset (or set it to `false`) to run only the collector. Both
+modes expose the collector API on port `8766`; the dashboard adds port `8765`.
 
 Finish radio discovery and fill in `.env` using the
 [environment setup](setup.md#environment-variables). Stop any existing collector
@@ -90,8 +88,7 @@ docker run --rm --name solar-city-combined --stop-timeout 30 \
   solar-city-inverter-radio
 ```
 
-Open <http://127.0.0.1:8765>. Existing installations should reuse their history
-volume and use the same `.env` as the collector-only setup.
+Open <http://127.0.0.1:8765>. History is stored in the mounted `/data` volume.
 
 The container starts two Python processes:
 
@@ -119,6 +116,6 @@ It forwards termination signals, waits up to 15 seconds for graceful shutdown,
 and reaps both processes. The example allows 30 seconds before the container
 runtime forces a stop.
 
-[Home Assistant](home-assistant.md) and other API consumers can keep using the
+[Home Assistant](home-assistant.md) and other API consumers use the
 collector on port `8766` whether the dashboard is enabled or not. The dashboard
 also proxies `/api/live` and `/api/history` on port `8765`.

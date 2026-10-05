@@ -24,10 +24,8 @@ start the dashboard in that same container.
 | Collector with dashboard | Set `SOLAR_DASHBOARD=true` in the container | Adds the dashboard on port `8765`; the collector API stays on `8766` |
 | Home Assistant | [REST sensor example](docs/home-assistant.md) | Reads the collector API directly; the dashboard is optional |
 
-**Status:** experimental, verified on one installation. The original implementation
-recovered from a radio reset, a leave/rejoin cycle, and one overnight-to-morning
-transition with the original collector powered off. This standalone export has
-software tests; it has not separately been deployed against a second inverter.
+**Status:** experimental, based on one installation. Independent hardware
+reproductions and long-term reliability remain unverified.
 
 ## Compatibility
 
@@ -87,9 +85,6 @@ Run one collector per SMLIGHT. Other consumers share its API.
    cd solar-city-inverter-radio
    uv sync --locked
    ```
-
-   uv manages Python and the local environment automatically. No manual venv
-   creation or activation is needed.
 
 3. **Find your inverter's radio settings.** Skip to step 4 if you already know
    its channel, both PAN IDs, and the inverter and original collector EUIs.
@@ -184,10 +179,6 @@ The [copyable configuration](docs/home-assistant.md) provides power in W and
 cumulative energy in kWh for the Energy dashboard, including availability checks
 for stale or missing readings. This works with the dashboard process stopped.
 
-**Upgrading from JSON configuration:** follow the
-[migration guide](docs/setup.md#migrating-from-json) to move your existing values
-into `.env`. Existing SQLite history needs no migration.
-
 ## Documentation
 
 - [Discover radio settings](docs/discovery.md): gather evidence without a preconfigured inverter address.
@@ -235,7 +226,7 @@ docs/               Setup, protocol, API, and integration guides
 ```
 
 Run Python module commands from the repository root. Local configuration stays
-there, and the default database remains `data/solar-history.sqlite3`.
+there, and the default database is `data/solar-history.sqlite3`.
 
 ```sh
 uv sync --locked
@@ -248,8 +239,7 @@ synthetic configuration and do not connect to a radio.
 
 Dependencies live in `pyproject.toml`; commit `uv.lock` alongside dependency
 changes. `.python-version` selects Python 3.12 by default; CI also tests 3.14.
-Use `UV_PYTHON=3.14 ./check` to test that version locally. This application runs
-from the checkout and does not need a wheel build or package installation.
+Use `UV_PYTHON=3.14 ./check` to test that version locally.
 
 ## License
 

@@ -42,7 +42,7 @@ class CollectorApiTests(unittest.TestCase):
         finally:
             connection.close()
 
-    def test_removed_ingestion_endpoint_cannot_store_data(self):
+    def test_undocumented_endpoints_cannot_store_data(self):
         self.assertEqual(self.request("GET", "/api/radio")[0], 404)
         self.assertEqual(self.request("POST", "/api/radio", b'{"solar_w":9999}')[0], 501)
         self.assertIsNone(self.history.latest())
@@ -64,7 +64,7 @@ class CollectorApiTests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/api/history?range=invalid")[0], 400)
         self.assertEqual(self.request("GET", "/healthz")[0], 200)
 
-    def test_startup_has_no_legacy_or_sample_fallback(self):
+    def test_startup_requires_configured_radio(self):
         with patch.object(collector, "smlight_collector", None):
             self.assertEqual(self.request("GET", "/api/live")[0], 503)
         with patch("collector.config.require_configured", side_effect=ValueError("Set radio environment variables")):
@@ -104,7 +104,7 @@ class CollectorApiTests(unittest.TestCase):
                        check=True, cwd=Path(__file__).resolve().parents[1],
                        env=os.environ.copy())
 
-    def test_default_database_location_survives_package_move(self):
+    def test_default_database_is_under_repository_data(self):
         import os
         import subprocess
         import sys

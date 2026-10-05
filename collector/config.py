@@ -33,7 +33,7 @@ ENV_FIELDS = {
 
 def load_config():
     if "SOLAR_CONFIG" in os.environ:
-        raise ValueError("SOLAR_CONFIG is no longer supported; migrate to environment variables and unset it; see docs/setup.md#migrating-from-json")
+        raise ValueError("Unsupported setting SOLAR_CONFIG; unset it and supply the radio environment variables; see docs/setup.md#environment-variables")
     required = {"host", "channel", "pan_id", "extended_pan_id", "collector_eui", "inverter_eui"}
     data = {key: os.environ[name] for key, name in ENV_FIELDS.items() if name in os.environ}
     if not data:

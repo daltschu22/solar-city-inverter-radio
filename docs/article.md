@@ -9,8 +9,7 @@ Python collector that takes over the original SolarCity collector's role for one
 specific legacy Power-One/Digi setup. It maintains the radio network, answers the
 inverter's startup messages, and reads production and diagnostic registers.
 
-The important qualification is compatibility. This has worked with a
-**Power-One PVI-5000-OUTD-US-Z**, its existing Digi XBee radio, and a
+This has worked with a **Power-One PVI-5000-OUTD-US-Z**, its existing Digi XBee radio, and a
 **SMLIGHT SLZB-06U**. It is a working prototype for that combination. The method
 currently requires the original collector's radio identity and network settings;
 a fresh pairing with an entirely new identity remains untested.
@@ -56,8 +55,8 @@ Although the firmware is called OpenThread RCP, the project uses it as a raw
 IEEE 802.15.4 interface. Python supplies the legacy Digi Zigbee frames. There is
 no Thread network in this arrangement.
 
-The division of work is straightforward. The radio handles transmission,
-reception, frame checksums, and MAC acknowledgments. Python handles coordinator
+The radio handles transmission, reception, frame checksums, and MAC
+acknowledgments. Python handles coordinator
 messages, application acknowledgments, measurement requests, and decoding.
 The repository pins the Python radio dependency to a specific revision so that
 another person can reproduce the same interface.
@@ -77,9 +76,7 @@ The tested XBee has coordinator verification enabled through `JV=1`. Digi's
 describes this startup check. The separate timer-based network watchdog was
 configured as `NW=0`, meaning disabled.
 
-That distinction changes the design. The replacement needs to answer startup
-verification correctly. Periodically restarting the radio or changing the
-measurement interval does not implement that exchange.
+The replacement answers startup verification as part of its coordinator duties.
 
 ## The small startup reply that matters
 
@@ -165,7 +162,7 @@ API reads do not increase inverter polling frequency.
 A capture used to inspect the application exchange needs to include unicast
 traffic. Stock TI RCP promiscuous reception can miss ACK-requested unicasts, so a
 quiet capture is not conclusive. An independent, verified sniffer can help during
-initial characterization; it is not needed for normal operation.
+initial characterization. Normal operation uses the SMLIGHT alone.
 
 The repository contains fictional identities and synthetic telemetry.
 Installation configuration, captures, databases, and logs stay out of version
@@ -174,19 +171,17 @@ the data includes information about the local equipment.
 
 ## What is proven and what remains open
 
-With the original collector powered off, the original implementation has recovered
-from a controlled radio reset and a leave/rejoin cycle. It also resumed readings
-after an overnight quiet period. That is evidence of working recovery on one
-installation, not a claim of universal compatibility or established long-term
-reliability. The standalone export has offline tests and still needs independent
-hardware reproductions.
+With the original collector powered off, testing covered recovery from a radio
+reset, a leave/rejoin cycle, and an overnight-to-morning transition on one
+installation. Independent hardware reproductions and long-term reliability
+remain unverified.
 
 The included discovery tool can recover candidate settings from inverter traffic
 and explains the evidence for each value. On an operating replacement network,
 it recovered all five required radio settings from inverter-originated frames.
-That still leaves an open commissioning question: an inverter that has already
-left its network may expose less information. Recovering from that state, or
-teaching it a new coordinator identity, remains unverified.
+An inverter that has already left its network may expose less information.
+Recovering from that state, or teaching it a new coordinator identity, remains
+unverified.
 
 There is useful prior work. [solarcity_sniff](https://github.com/hufman/solarcity_sniff)
 records and decodes SolarCity traffic. Other communities have built replacement
@@ -194,7 +189,3 @@ coordinators for [Enecsys](https://github.com/bulldog5046/Enecsys-Zigbee-HA) and
 [APsystems](https://github.com/patience4711/ESP32-read-APS-inverters). Their
 protocols differ, but they show why both network behavior and application replies
 matter. The repository includes further [sources and credits](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/references.md).
-
-For someone with this Power-One/Digi combination, the useful starting point is
-now concrete: the coordinator behavior, startup bytes, register requests, and
-software needed to reproduce a local collector are available together.

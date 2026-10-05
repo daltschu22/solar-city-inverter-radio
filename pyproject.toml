@@ -18,5 +18,5 @@ capture = ["scapy==2.7.0"]
 Repository = "https://github.com/daltschu22/solar-city-inverter-radio"
 
 [tool.uv]
-# Run the application from its checkout; no wheel installation is needed.
+# Run the application from its checkout.
 package = false

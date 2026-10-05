@@ -21,8 +21,8 @@ installation.
 
 ## Helping someone set it up
 
-Run all `uv run ...` commands from the repository root. Configuration stays
-in that directory; the source folders do not contain installation settings.
+Run all `uv run ...` commands from the repository root. Keep the local `.env`
+file in that directory.
 
 1. Inspect existing configuration and services first. Reuse information already
    provided; ask only for missing details. Establish the inverter model, bridge
@@ -35,8 +35,7 @@ in that directory; the source folders do not contain installation settings.
    CC2652P running the documented OpenThread RCP firmware. This application owns
    the raw radio connection; it does not use ZHA, Zigbee2MQTT, or an OTBR.
 3. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and run
-   `uv sync --locked`. It manages Python and the local environment; no manual
-   venv activation is needed. `pyproject.toml` declares dependencies, `uv.lock`
+   `uv sync --locked`. `pyproject.toml` declares dependencies, `uv.lock`
    pins them, and `.python-version` selects Python 3.12 by default. Container
    builds use the same lockfile. Keep metadata and lockfile changes together.
 4. If radio settings are missing, follow [discovery](docs/discovery.md). Offline
@@ -51,8 +50,7 @@ in that directory; the source folders do not contain installation settings.
    bridge's factory EUI. Recovery from a fully unjoined inverter with unknown
    settings is unverified; explain missing evidence instead of promising pairing.
 6. Save installation settings in ignored `.env` or the service environment.
-   Preserve existing settings; do not overwrite them with a template. Use the
-   [migration guide](docs/setup.md#migrating-from-json) for older JSON installations.
+   Preserve existing settings; do not overwrite them with a template.
    Pass `--env-file .env` to `uv run` to load reviewed settings, as shown in
    [setup](docs/setup.md#environment-variables). Validate using
    `uv run --env-file .env python -m collector.config`; this opens no radio connection.
@@ -80,6 +78,8 @@ authenticated proxy; the application has no built-in authentication.
 
 ## Privacy and changes
 
+- Describe the current setup directly. Leave development history, migration notes,
+  and comparisons with previous approaches out of user-facing docs unless requested.
 - Keep installation hosts/IPs, EUIs, serial numbers, coordinates, credentials,
   raw captures, logs, and production databases out of commits, images, and public
   reports. Use fictional identities in examples and tests. Summarize validation

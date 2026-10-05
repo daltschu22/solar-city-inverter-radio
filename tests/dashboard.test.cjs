@@ -118,7 +118,7 @@ test("nighttime standby is neutral and preserves the real reading and age", asyn
   assert.equal(nodes.get("#status-detail").textContent, "Waiting for the inverter radio");
 });
 
-test("freshness follows the slower poll cadence without hiding old readings", () => {
+test("freshness follows the configured poll cadence without hiding old readings", () => {
   const { run, nodes } = dashboard();
   run(`renderLive({solar_w: 500, timestamp: Date.now()/1000 - 120,
     collector: {state: "live", interval_seconds: 60}})`);

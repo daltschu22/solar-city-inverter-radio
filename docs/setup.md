@@ -94,9 +94,8 @@ collector EUI remain untested. See the [evidence limits](discovery.md).
 ## Configure the collector
 
 Install dependencies and copy `config.example.env` to `.env` as shown in the
-README. The collector reads environment variables only. uv, Docker, or a service
-manager can load the file into its environment; the application does not open
-config files itself. Validation rejects missing settings, invalid ranges, and
+README. The collector reads environment variables supplied by uv, Docker, or
+your service manager. Validation rejects missing settings, invalid ranges, and
 matching inverter/collector identities before opening the radio. Changes require
 restarting the app.
 
@@ -144,10 +143,6 @@ Use this after capture has stopped and the original collector is powered off,
 as described in [Start and verify](#start-and-verify). Your service manager can
 also supply these variables directly; `.env` is a convenience for local setup.
 
-Plain Python does not load `.env` automatically. If using it directly, export
-the settings through your shell or service manager first. uv does not load the
-file unless requested with `--env-file` (or its corresponding uv environment setting).
-
 Additional environment settings:
 
 | Variable | Default and purpose |
@@ -191,18 +186,15 @@ stopped independently. Reading the API never triggers additional inverter polls.
 
 Verify identity, request/response counters, fresh readings, and plausible units.
 Observe startup and the next overnight-to-morning transition before relying on
-unattended recovery. The original implementation has demonstrated those paths on
-one installation; the export has not established multi-day reliability or broad
-hardware compatibility.
+unattended recovery. Hardware testing covers one installation; long-term reliability
+and broader hardware compatibility remain unverified.
 
-An overnight gap is not direct proof of a hardware sleep mode. The original
-installation resumed readings the following morning with the original collector
-off. Allow startup time and use actual response freshness, rather than a green
-HTTP health check, to judge recovery.
+An overnight gap is not direct proof of a hardware sleep mode. Allow startup
+time and use response freshness to judge recovery.
 
 ## Run the collector in a container
 
-There is one image. It runs the collector and API by default. To add the
+The container runs the collector and API by default. To add the
 dashboard, set `SOLAR_DASHBOARD=true` when starting the container and publish
 port `8765` too; see the [example](dashboard.md#combined-container).
 
@@ -228,34 +220,9 @@ reverse proxy according to your environment.
 
 Keep `.env` private. Do not bake installation values into the image.
 
-For an existing installation, reuse its database volume and environment settings.
-The database schema is unchanged. Containers start with `python -m runtime`;
-rebuild the image after updating. The [dashboard guide](dashboard.md) covers the
-separate viewer and optional combined container.
-
-## Migrating from JSON
-
-JSON configuration is no longer supported. Copy `config.example.env` to `.env`
-and transfer your existing values using this mapping:
-
-| Former JSON field | Environment variable |
-| --- | --- |
-| `host` | `SOLAR_RADIO_HOST` |
-| `port` | `SOLAR_RADIO_PORT` |
-| `channel` | `SOLAR_RADIO_CHANNEL` |
-| `pan_id` | `SOLAR_PAN_ID` |
-| `extended_pan_id` | `SOLAR_EXTENDED_PAN_ID` |
-| `collector_eui` | `SOLAR_COLLECTOR_EUI` |
-| `inverter_eui` | `SOLAR_INVERTER_EUI` |
-| `initial_address` | `SOLAR_INITIAL_ADDRESS` |
-
-Preserve EUI leading zeroes and the displayed byte order. Copy JSON string values
-without their JSON quotes; decimal numbers and `0x`-prefixed PAN values still work.
-Unset `SOLAR_CONFIG` in your shell or service definition. Replace the old JSON
-container mount with `--env-file .env`, and validate with
-`uv run --env-file .env python -m collector.config` before restarting collection.
-The old JSON file is not read; keep it private if you retain a backup. Reuse your
-existing SQLite data volume.
+Containers start with `python -m runtime`. Rebuild the image after updating and
+keep the data volume across container replacements. The [dashboard guide](dashboard.md)
+covers the separate viewer and optional combined container.
 
 ## Contributing a useful reproduction report
 
