@@ -29,11 +29,9 @@ file in that directory.
    model/firmware and address, intended runtime host, and whether a collector is
    already running. Collection alone is a complete installation; add the
    dashboard or Home Assistant when wanted.
-2. Check [compatibility](README.md#compatibility) and
-   [bridge setup](docs/setup.md#prepare-the-bridge). The tested hardware is a
-   Power-One PVI-5000-OUTD-US-Z with its legacy Digi radio and a SMLIGHT SLZB-06U
-   CC2652P running the documented OpenThread RCP firmware. This application owns
-   the raw radio connection; it does not use ZHA, Zigbee2MQTT, or an OTBR.
+2. Check [compatibility](README.md#compatibility), then follow
+   [radio firmware and bridge configuration](#radio-firmware-and-bridge-configuration)
+   below before discovery or collection.
 3. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and run
    `uv sync --locked`. `pyproject.toml` declares dependencies, `uv.lock`
    pins them, and `.python-version` selects Python 3.12 by default. Container
@@ -75,6 +73,54 @@ Assistant, use the [REST sensor example](docs/home-assistant.md); it does not
 need the dashboard. Publish HTTP ports on host loopback by default, as the
 examples do. Remote access needs the user's intended trusted network or
 authenticated proxy; the application has no built-in authentication.
+
+## Radio firmware and bridge configuration
+
+The tested bridge is a **SMLIGHT SLZB-06U with a CC2652P radio**. Confirm the
+model and radio chip in its web interface. Record its current core firmware,
+radio firmware, and network settings privately before making changes. The core
+firmware runs the web interface and network bridge; the radio firmware supplies
+the OpenThread RCP interface used by this collector.
+
+| Setting | Tested value |
+| --- | --- |
+| Radio firmware | Official SMLIGHT CC2652P OpenThread RCP build `20260304` |
+| Serial bridge transport | TCP over the local network |
+| TCP port | `6638` |
+| Radio UART baud rate | `460800` |
+| Host connection | Reachable, stable bridge hostname or IP |
+
+1. Open the bridge's web interface at its LAN address. Establish exclusive use
+   of the bridge before changing firmware or mode; stop any collector, capture
+   tool, ZHA, Zigbee2MQTT, or OTBR connected to it.
+2. If the radio needs flashing and bridge setup is within the user's authorized
+   scope, follow SMLIGHT's [RCP flashing instructions](https://smlight.tech/manual/slzb-06/guide/thread-matter/).
+   The documented web workflow selects **Mode → Matter-over-Thread** and waits
+   for flashing to finish. Check the offered image's chip and build before
+   applying it. A core firmware update alone does not install radio firmware.
+   If the tested build is unavailable, report that gap; another build requires
+   validation. Leave a working matching installation as configured.
+3. Configure network serial access with TCP port `6638` and UART baud `460800`.
+   Use the bridge's Ethernet or Wi-Fi connection and retain a stable address,
+   such as a DHCP reservation. SMLIGHT's [web configuration guide](https://smlight.tech/manual/slzb-06/guide/configuration/)
+   describes its network and mode controls. Menu labels can vary by core version.
+   This application uses raw IEEE 802.15.4 through RCP; stop at bridge setup in
+   the vendor guide. Do not create a Thread network or install its OTBR add-on
+   for this integration. Leave the inverter's Digi firmware and settings alone.
+4. Follow [discovery](docs/discovery.md#gather-a-new-capture) from the intended
+   collector host. A successful scan verifies TCP and Spinel access; receiving
+   no inverter frames does not by itself establish a firmware problem. Compare
+   the capture tool's `Radio firmware:` output with the full tested version in
+   [bridge setup](docs/setup.md#prepare-the-bridge).
+5. Put the bridge address and port in `SOLAR_RADIO_HOST` and `SOLAR_RADIO_PORT`.
+   Populate the channel, PAN IDs, and both EUIs from reviewed discovery evidence
+   using the [field mapping](docs/discovery.md#apply-reviewed-values). The collector
+   applies these radio settings at startup. The expected collector EUI comes
+   from the inverter's network; preserve its displayed byte order and leading
+   zeroes. Keep settings in ignored `.env` or the service environment.
+6. Run `uv run --env-file .env python -m collector.config`. This validates values
+   offline. Finish capture, power off the original SolarCity collector if present,
+   then start collection and verify fresh readings using the setup steps above.
 
 ## Privacy and changes
 
