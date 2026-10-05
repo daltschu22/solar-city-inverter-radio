@@ -73,9 +73,17 @@ its radio identity.
    .venv/bin/pip install -r requirements.txt
    ```
 
-3. If your radio settings are unknown, gather them before creating the config.
-   Use a spare receiver or stop any program using this bridge; discovery resets
-   and configures the receiver. Replace `YOUR_BRIDGE_HOST` with its hostname or IP:
+3. **Find your inverter's radio settings.** Skip to step 4 if you already know
+   its channel, both PAN IDs, and the inverter and original collector EUIs.
+
+   Use the same SMLIGHT that will run the replacement. Close any other program
+   connected to it, including this project's `server.py`, before scanning.
+   `--exclusive-radio` confirms that this script has the SMLIGHT to itself;
+   scanning resets the SMLIGHT radio into listening mode.
+
+   Run this from the repository folder on your computer. Replace
+   `YOUR_BRIDGE_HOST` with the **SMLIGHT's IP address or hostname**—the address
+   you use to open its web interface, without `http://` or a trailing slash:
 
    ```sh
    .venv/bin/python tools/discover_radio.py \
@@ -84,19 +92,27 @@ its radio identity.
      --output captures/discovery.json
    ```
 
-   This listens across all channels for about five minutes. Follow the
-   [report-to-config walkthrough](docs/discovery.md#apply-reviewed-values) to
-   identify your inverter and check which settings were observed. The guide also
-   covers incomplete reports and analyzing existing captures without a radio.
+   Leave the inverter powered and wait about five minutes for the scan to finish.
+   If your original SolarCity box is still working, it can stay on during this
+   listening step; power it off before starting the replacement in step 6.
+
+   Look for `5/5 settings` in the terminal output. Open `captures/discovery.json`
+   to review the detected inverter and its values, then continue to step 4.
+   If it finds fewer settings or no inverter, follow
+   [If the report is incomplete](docs/discovery.md#if-the-report-is-incomplete)
+   before continuing. Discovery may be incomplete, especially without a working
+   collector; leave missing values unresolved rather than guessing them.
 4. Copy the template, then edit `radio.local.json`:
 
    ```sh
    cp config.example.json radio.local.json
    ```
 
-   Supply your bridge hostname, channel, PAN IDs, expected original collector
-   EUI, and inverter EUI. Required fields are blank or placeholders; use your own
-   reviewed settings. Capture reports and local configs are ignored by Git.
+   Enter your SMLIGHT address and the five reviewed radio settings. The
+   [field-by-field mapping](docs/discovery.md#apply-reviewed-values) shows exactly
+   which report value goes into each config field. Required fields are blank or
+   placeholders; use your own settings. Capture reports and local configs are
+   ignored by Git.
 5. Validate without touching the radio:
 
    ```sh

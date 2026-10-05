@@ -15,9 +15,18 @@ Prepare the bridge with the supported RCP firmware and install the repository's
 Python dependencies. A site configuration is not required, even if a partially
 edited `radio.local.json` already exists.
 
-Use a spare receiver, or stop the collector that currently owns this bridge.
-The capture process resets and configures the bridge, so it must have exclusive
-access. It never stops another service automatically.
+You can scan with the same SMLIGHT you will later use for the replacement.
+First stop any program connected to that SMLIGHT, including `server.py`, ZHA,
+Zigbee2MQTT, or OTBR. The `--exclusive-radio` flag confirms you have done this:
+the capture process resets and configures the bridge for listening. It never
+stops another service automatically. A separate receiver is useful if you want
+to leave an existing replacement running during capture.
+
+Run the command below from the repository directory on your computer. Replace
+`YOUR_BRIDGE_HOST` with the SMLIGHT's IP address or hostname, as used to open its
+web interface, without `http://` or a trailing slash. Leave the inverter powered
+during the scan. A working original SolarCity collector can remain on while you
+listen; power it off before starting the replacement collector.
 
 ```sh
 .venv/bin/python tools/discover_radio.py \
