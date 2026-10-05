@@ -65,3 +65,58 @@ The dashboard image contains the web server and static assets. It needs no radio
 config or database mount. Container DNS resolves `solar-city-collector` on the
 shared network. Using `localhost` inside the dashboard container would refer to
 that container itself.
+
+## Combined container
+
+Build with `--target combined` to start the collector and dashboard in one
+container. The default build and `--target collector` still run only the collector;
+`--target dashboard` still runs only the viewer. These targets work with both
+Podman and Docker, using `-f Containerfile`.
+
+Finish radio discovery and fill in `.env` using the
+[environment setup](setup.md#environment-variables). Stop any existing collector
+that owns the bridge, then:
+
+```sh
+podman build --target combined -t solar-city-combined -f Containerfile .
+podman volume create solar-city-inverter-radio-data
+podman run --rm --name solar-city-combined --stop-timeout 30 \
+  -p 127.0.0.1:8765:8765 \
+  --env-file .env \
+  -v solar-city-inverter-radio-data:/data \
+  solar-city-combined
+```
+
+Open <http://127.0.0.1:8765>. Existing installations should reuse their history
+volume. To use JSON instead of `.env`, replace `--env-file .env` with the
+read-only config mount from the [collector setup](setup.md#run-the-collector-in-a-container).
+
+`combined.py` starts two Python processes:
+
+```mermaid
+flowchart LR
+    inverter[Inverter] --> smlight[SMLIGHT]
+    smlight --> collector["Collector + API :8766"]
+    collector --> database[(SQLite)]
+    browser[Browser] --> dashboard["Dashboard :8765"]
+    dashboard -->|GET /api/live or /api/history| collector
+```
+
+The collector owns the radio and database. The dashboard proxies `/api/live`
+and `/api/history` to its API; these requests never trigger radio polls. The
+collector API binds to loopback inside the container. `SOLAR_API_PORT` changes
+its port, and the launcher sets the dashboard's `SOLAR_COLLECTOR_URL` to that
+local API automatically. `PORT` sets the dashboard port; the two ports must differ.
+`SOLAR_API_BIND` and `SOLAR_COLLECTOR_URL` are set by the launcher in this mode.
+
+Closing the browser leaves collection running. Stopping the container stops
+both processes. If either process exits, the launcher stops the other and exits
+with an error, so your container service manager can restart the whole service.
+It forwards termination signals, waits up to 15 seconds for graceful shutdown,
+and reaps both processes. The example allows 30 seconds before the container
+runtime forces a stop.
+
+Home Assistant and other API consumers can use the dashboard's exposed port
+(`8765` by default) for the same `/api/live` and `/api/history` endpoints. For
+[Home Assistant](home-assistant.md), change the example's resource port from
+`8766` to `8765`. The separate collector image exposes its API directly on `8766`.

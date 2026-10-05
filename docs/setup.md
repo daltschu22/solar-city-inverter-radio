@@ -208,8 +208,10 @@ HTTP health check, to judge recovery.
 ## Run the collector in a container
 
 The default image contains the collector and its API. The optional dashboard has
-a separate image target. Create a network for consumers and a persistent data
-volume, then build and run the collector:
+a separate image target. You can also use the
+[combined target](dashboard.md#combined-container) to run both in one container.
+Create a network for consumers and a persistent data volume, then build and run
+the collector:
 
 ```sh
 podman build --target collector -t solar-city-collector -f Containerfile .
@@ -247,7 +249,8 @@ schema is unchanged. The former combined `server.py` command now serves only the
 dashboard: update your collector service command to `collector.py`. Move any
 collector API bind/port settings to `SOLAR_API_BIND` and `SOLAR_API_PORT`, and
 update API clients for port `8766` (or your chosen port). The
-[dashboard guide](dashboard.md) covers the separate viewer.
+[dashboard guide](dashboard.md) covers the separate viewer and optional combined
+container.
 
 ## Contributing a useful reproduction report
 
