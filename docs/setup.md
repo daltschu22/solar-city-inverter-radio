@@ -213,14 +213,14 @@ dashboard, set `SOLAR_DASHBOARD=true` when starting the container and publish
 port `8765` too; see the [example](dashboard.md#combined-container).
 
 Create a network for consumers and a persistent data volume, then build and run
-the collector. These commands use Podman; Docker accepts the same build and run
-options, including `-f Containerfile`:
+the collector. These commands use Docker; you can substitute `podman` if that
+is your container runtime. Both automatically find `Dockerfile`:
 
 ```sh
-podman build -t solar-city-inverter-radio -f Containerfile .
-podman network create solar-city
-podman volume create solar-city-inverter-radio-data
-podman run --rm --name solar-city-collector --network solar-city \
+docker build -t solar-city-inverter-radio .
+docker network create solar-city
+docker volume create solar-city-inverter-radio-data
+docker run --rm --name solar-city-collector --network solar-city \
   -p 127.0.0.1:8766:8766 \
   --mount type=bind,src="$PWD/radio.local.json",dst=/config/radio.local.json,ro \
   -v solar-city-inverter-radio-data:/data \
@@ -238,7 +238,7 @@ Alternatively, fill in `.env` as above and supply it to the container without
 mounting a JSON file:
 
 ```sh
-podman run --rm --name solar-city-collector --network solar-city \
+docker run --rm --name solar-city-collector --network solar-city \
   -p 127.0.0.1:8766:8766 \
   --env-file .env \
   -v solar-city-inverter-radio-data:/data \

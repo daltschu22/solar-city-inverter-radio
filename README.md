@@ -202,6 +202,7 @@ Set `SOLAR_DASHBOARD=true` to keep both programs in one container.
 - [Article draft](docs/article.md): a publishable explanation focused on the useful implementation details.
 - [Sources and related projects](docs/references.md): vendor documentation and prior community work.
 - [Contributing](CONTRIBUTING.md): offline tests and privacy rules for reports and captures.
+- [Agent setup guide](AGENTS.md): instructions for an agent helping configure and run an installation.
 
 ## Data and operation
 

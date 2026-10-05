@@ -54,7 +54,7 @@ With the collector running on the `solar-city` network from the setup guide,
 use the same image and override its command to start only the dashboard:
 
 ```sh
-podman run --rm --name solar-city-dashboard --network solar-city \
+docker run --rm --name solar-city-dashboard --network solar-city \
   -p 127.0.0.1:8765:8765 \
   -e SOLAR_COLLECTOR_URL=http://solar-city-collector:8766 \
   solar-city-inverter-radio python server.py
@@ -76,9 +76,9 @@ Finish radio discovery and fill in `.env` using the
 that owns the bridge, then:
 
 ```sh
-podman build -t solar-city-inverter-radio -f Containerfile .
-podman volume create solar-city-inverter-radio-data
-podman run --rm --name solar-city-combined --stop-timeout 30 \
+docker build -t solar-city-inverter-radio .
+docker volume create solar-city-inverter-radio-data
+docker run --rm --name solar-city-combined --stop-timeout 30 \
   -p 127.0.0.1:8766:8766 \
   -p 127.0.0.1:8765:8765 \
   -e SOLAR_DASHBOARD=true \
