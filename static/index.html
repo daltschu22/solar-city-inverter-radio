@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Solar Production</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Power-One PVI-5000</p>
+          <h1>Solar Production</h1>
+        </div>
+        <div class="system-status" aria-live="polite">
+          <span class="dot disconnected" id="status-dot"></span>
+          <div>
+            <strong id="status-text">Connecting to SMLIGHT</strong>
+            <span id="status-detail">Awaiting inverter reading</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Solar summary">
+        <article class="summary primary">
+          <span id="power-label">Producing now</span>
+          <strong id="current-power">--</strong>
+          <small id="power-detail">Last verified inverter reading</small>
+        </article>
+        <article class="summary">
+          <span>Lifetime production</span>
+          <strong id="lifetime-energy">--</strong>
+          <small>Inverter export meter</small>
+        </article>
+        <article class="summary">
+          <span>Last reading</span>
+          <strong id="last-capture">--</strong>
+          <small id="capture-detail">No reading received</small>
+        </article>
+      </section>
+
+      <section class="chart-band" aria-labelledby="history-title">
+        <div class="chart-head">
+          <div>
+            <p class="eyebrow">Recorded output</p>
+            <h2 id="history-title">Production history</h2>
+          </div>
+          <div class="range-control" role="group" aria-label="History range">
+            <button type="button" data-range="1h">1H</button>
+            <button type="button" data-range="6h">6H</button>
+            <button type="button" data-range="24h" class="active">24H</button>
+            <button type="button" data-range="7d">7D</button>
+            <button type="button" data-range="30d">30D</button>
+            <button type="button" data-range="1y">1Y</button>
+            <button type="button" data-range="all">All</button>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <div
+            class="history-chart"
+            id="history-chart"
+            role="img"
+            aria-label="Solar production over time"
+          ></div>
+          <div class="chart-empty" id="chart-empty">Waiting for the next verified reading</div>
+        </div>
+        <div class="chart-help" id="chart-help"></div>
+        <div class="history-summary">
+          <div>
+            <span>Peak</span>
+            <strong id="range-peak">--</strong>
+          </div>
+          <div>
+            <span>Generated</span>
+            <strong id="range-generated">--</strong>
+          </div>
+          <div>
+            <span>Verified readings</span>
+            <strong id="sample-count">0</strong>
+          </div>
+          <div>
+            <span>Data gaps</span>
+            <strong id="gap-count">--</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="telemetry-band" aria-labelledby="telemetry-title">
+        <h2 id="telemetry-title">Inverter details</h2>
+        <div id="telemetry-groups" class="telemetry-groups"></div>
+      </section>
+
+      <section class="collector-band" aria-labelledby="collector-title">
+        <div class="collector-head">
+          <div>
+            <p class="eyebrow">Inverter radio</p>
+            <h2 id="collector-title">SMLIGHT SLZB-06U</h2>
+          </div>
+          <span id="collector-state">Offline</span>
+        </div>
+        <dl class="collector-facts">
+          <div>
+            <dt>Radio link</dt>
+            <dd id="radio-link">Channel 14</dd>
+          </div>
+          <div>
+            <dt>Radio address</dt>
+            <dd id="radio-host">--</dd>
+          </div>
+          <div>
+            <dt>Inverter signal</dt>
+            <dd id="radio-rssi">--</dd>
+          </div>
+          <div>
+            <dt>Polling interval</dt>
+            <dd id="poll-interval">--</dd>
+          </div>
+          <div>
+            <dt>Last query</dt>
+            <dd id="last-poll">--</dd>
+          </div>
+          <div>
+            <dt>Successful queries</dt>
+            <dd id="poll-results">--</dd>
+          </div>
+        </dl>
+      </section>
+    </main>
+    <script src="vendor/echarts.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

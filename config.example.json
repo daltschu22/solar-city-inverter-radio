@@ -1,0 +1,9 @@
+{
+  "host": "",
+  "port": 6638,
+  "channel": null,
+  "pan_id": "REPLACE_WITH_0x_HEX_PAN_ID",
+  "extended_pan_id": "REPLACE_WITH_0x_HEX_EXTENDED_PAN_ID",
+  "collector_eui": "REPLACE_WITH_ORIGINAL_COLLECTOR_EUI",
+  "inverter_eui": "REPLACE_WITH_INVERTER_EUI"
+}

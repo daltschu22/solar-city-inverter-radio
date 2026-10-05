@@ -1,0 +1,3 @@
+pyspinel @ https://github.com/openthread/pyspinel/archive/5e0627abd04b7d2c7ca47c6615bd14b31227eb4d.zip
+pyserial==3.5
+astral==3.2

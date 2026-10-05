@@ -1,0 +1,10 @@
+{
+  "host": "radio.example.invalid",
+  "port": 6638,
+  "channel": 14,
+  "pan_id": "0x1234",
+  "extended_pan_id": "0x1122334455667788",
+  "collector_eui": "0200000000000001",
+  "inverter_eui": "0200000000000002",
+  "initial_address": "0x2345"
+}

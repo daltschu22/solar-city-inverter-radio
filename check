@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+export SOLAR_CONFIG="$PWD/tests/config.synthetic.json"
+python3 -m unittest discover -s tests -p 'test_*.py'
+node --test tests/dashboard.test.cjs
+python3 tools/check_publication.py

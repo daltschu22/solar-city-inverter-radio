@@ -1,0 +1,14 @@
+.git
+.venv
+__pycache__
+**/__pycache__
+*.local.json
+.env*
+data
+captures
+*.sqlite*
+*.db
+*.pcap*
+*.log
+tests
+docs

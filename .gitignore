@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+*.local.json
+data/
+captures/
+*.sqlite*
+*.db
+*.pcap*
+*.log
+dist/
+.DS_Store
