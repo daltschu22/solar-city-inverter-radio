@@ -1,5 +1,9 @@
 # Replace a SolarCity monitoring collector
 
+This is **part 1: data collection**. The collector owns the radio, saves readings,
+and provides a JSON API. You can finish here, connect your own consumer or
+[Home Assistant](home-assistant.md), or add the [optional dashboard](dashboard.md).
+
 This guide covers a single legacy Power-One/Digi installation using an existing
 collector identity. It assumes the inverter already contains a working radio.
 All addresses in the tests are fictional. The repository contains no reusable
@@ -110,9 +114,9 @@ Additional environment settings:
 | Variable | Default and purpose |
 | --- | --- |
 | `SOLAR_CONFIG` | `radio.local.json`; installation configuration |
-| `SOLAR_HISTORY_PATH` | `data/solar-history.sqlite3` beside `server.py` |
-| `SOLAR_BIND` | `127.0.0.1`; HTTP listening address |
-| `PORT` | `8765`; HTTP port |
+| `SOLAR_HISTORY_PATH` | `data/solar-history.sqlite3` beside `collector.py` |
+| `SOLAR_API_BIND` | `127.0.0.1`; collector API listening address |
+| `SOLAR_API_PORT` | `8766`; collector API port |
 | `SOLAR_LATITUDE`, `SOLAR_LONGITUDE` | Unset; optional, supply both for nighttime inference |
 
 Coordinates stay in your runtime environment. Nighttime inference never creates
@@ -121,11 +125,11 @@ near sunset, a healthy bridge, quiet radio traffic, and no reported fault.
 
 ## Start and verify
 
-Power off the original collector. Ensure no capture tool, ZHA, Zigbee2MQTT, OTBR,
+Power off the original collector, if present. Ensure no capture tool, ZHA, Zigbee2MQTT, OTBR,
 or second instance owns the SMLIGHT connection. Then run:
 
 ```sh
-.venv/bin/python server.py
+.venv/bin/python collector.py
 ```
 
 The startup sequence is:
@@ -138,9 +142,13 @@ The startup sequence is:
 4. Learn the inverter's current short address from identifiable direct traffic.
 5. Send serialized read requests and store validated responses.
 
-Use `/api/live` for current collector status and `/api/history?range=1h` for saved
-readings. `/healthz` only verifies the HTTP process is responding; it does not
-prove the inverter is producing or communicating.
+Use <http://127.0.0.1:8766/api/live> for current collector status and
+`/api/history?range=1h` on the same port for saved readings. `/healthz` only
+verifies the HTTP process is responding; it does not prove the inverter is
+producing or communicating. The [API guide](api.md) describes units and freshness.
+
+Keep this process running to collect data. The dashboard can be started and
+stopped independently. Reading the API never triggers additional inverter polls.
 
 Verify identity, request/response counters, fresh readings, and plausible units.
 Observe startup and the next overnight-to-morning transition before relying on
@@ -153,18 +161,21 @@ installation resumed readings the following morning with the original collector
 off. Allow startup time and use actual response freshness, rather than a green
 HTTP health check, to judge recovery.
 
-## Run in a container
+## Run the collector in a container
 
-The image includes the application and static assets. Build from the repository:
+The default image contains the collector and its API. The optional dashboard has
+a separate image target. Create a network for consumers and a persistent data
+volume, then build and run the collector:
 
 ```sh
-podman build -t solar-city-inverter-radio -f Containerfile .
+podman build --target collector -t solar-city-collector -f Containerfile .
+podman network create solar-city
 podman volume create solar-city-inverter-radio-data
-podman run --rm --name solar-city-inverter-radio \
-  -p 127.0.0.1:8765:8765 \
+podman run --rm --name solar-city-collector --network solar-city \
+  -p 127.0.0.1:8766:8766 \
   --mount type=bind,src="$PWD/radio.local.json",dst=/config/radio.local.json,ro \
   -v solar-city-inverter-radio-data:/data \
-  solar-city-inverter-radio
+  solar-city-collector
 ```
 
 Make the config readable by container UID `10001`; on a single-user host, a
@@ -173,6 +184,13 @@ hosts may need an appropriate label on the bind mount. Keep a persistent data
 volume. Stop the foreground Python process before starting the container.
 The HTTP port is published to host loopback only. Add your own service management
 or reverse proxy according to your environment.
+
+For an existing installation, reuse its database volume and config. The database
+schema is unchanged. The former combined `server.py` command now serves only the
+dashboard: update your collector service command to `collector.py`. Move any
+collector API bind/port settings to `SOLAR_API_BIND` and `SOLAR_API_PORT`, and
+update API clients for port `8766` (or your chosen port). The
+[dashboard guide](dashboard.md) covers the separate viewer.
 
 ## Contributing a useful reproduction report
 

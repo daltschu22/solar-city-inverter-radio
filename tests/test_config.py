@@ -28,7 +28,7 @@ class ConfigTests(unittest.TestCase):
         code = '''
 from config import CONFIG
 from coordinator import Coordinator, beacon
-from server import decode_ieee802154_frame
+from radio_protocol import decode_ieee802154_frame
 from tools.smlight_poll import read_request
 assert CONFIG.host == "radio.example.invalid" and CONFIG.port == 12345
 assert CONFIG.channel == 20

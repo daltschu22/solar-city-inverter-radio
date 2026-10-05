@@ -133,8 +133,8 @@ operating settings.
 
 ## Reproducing the setup
 
-The repository includes the collector, decoder, synthetic protocol tests, a local
-web interface, and a container definition. The detailed
+The repository includes the collector, decoder, synthetic protocol tests, an
+optional dashboard, and separate container build targets. The detailed
 [setup guide](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/setup.md)
 covers the exact configuration fields and startup sequence.
 
@@ -151,6 +151,15 @@ The main steps are:
    exclusive access to the radio bridge after capture has finished.
 5. Validate fresh readings, then observe startup and overnight recovery.
 
+Run `python collector.py` for collection and the JSON API on port `8766`. That is
+a complete setup for anyone who wants to consume the data themselves. The
+included dashboard runs separately with `python server.py` on port `8765` and
+reads the collector API. Home Assistant can use the same API through its REST
+sensors; the repository includes a
+[power and energy example](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/home-assistant.md).
+Starting or stopping the dashboard does not restart the radio connection, and
+API reads do not increase inverter polling frequency.
+
 A capture used to inspect the application exchange needs to include unicast
 traffic. Stock TI RCP promiscuous reception can miss ACK-requested unicasts, so a
 quiet capture is not conclusive. An independent, verified sniffer can help during
@@ -158,8 +167,8 @@ initial characterization; it is not needed for normal operation.
 
 The repository contains fictional identities and synthetic telemetry.
 Installation configuration, captures, databases, and logs stay out of version
-control. The dashboard binds to localhost by default because its API contains
-information about the local equipment.
+control. The collector API and dashboard bind to localhost by default because
+the data includes information about the local equipment.
 
 ## What is proven and what remains open
 

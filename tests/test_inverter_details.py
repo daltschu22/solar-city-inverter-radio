@@ -5,7 +5,7 @@ from pathlib import Path
 
 from inverter import TelemetryStore, decode_details
 from tools.smlight_poll import READS, read_request
-from server import decode_ieee802154_frame, decode_modbus_message
+from radio_protocol import decode_ieee802154_frame, decode_modbus_message
 
 
 def verified_registers():

@@ -1,6 +1,6 @@
 import unittest
 
-from server import decode_ieee802154_frame, decode_modbus_message
+from radio_protocol import decode_ieee802154_frame, decode_modbus_message
 from tools.smlight_poll import acknowledgment, is_inverter, read_request, response_values
 
 

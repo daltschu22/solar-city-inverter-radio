@@ -1,4 +1,4 @@
-"""One reconnecting, read-only SMLIGHT radio connection owned by the dashboard."""
+"""One reconnecting, read-only SMLIGHT radio connection owned by the collector."""
 
 from collections import deque
 import hashlib

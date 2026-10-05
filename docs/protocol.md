@@ -10,6 +10,9 @@ flowchart LR
     RCP <-->|IEEE 802.15.4 and Digi Zigbee| XBee[Inverter XBee]
     XBee <-->|Serial Modbus RTU| Inverter[Power-One SunSpec registers]
     Python --> SQLite[Local history]
+    Python --> API[Read-only JSON API]
+    API --> Dashboard[Optional dashboard]
+    API --> HA[Home Assistant or other clients]
 ```
 
 ## Network maintenance

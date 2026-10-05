@@ -17,7 +17,7 @@ import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from server import decode_modbus_message, decode_sunspec_values, modbus_crc16
+from radio_protocol import decode_modbus_message, decode_sunspec_values, modbus_crc16
 from tools.smlight_capture import decode_record
 
 from config import CONFIG, require_configured

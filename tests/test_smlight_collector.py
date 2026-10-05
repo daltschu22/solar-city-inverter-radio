@@ -4,8 +4,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import server
-from server import SolarHistoryStore
+import collector
+from history import SolarHistoryStore
+from radio_protocol import decode_ieee802154_frame
 from smlight_collector import CHANNEL, COLLECTOR, QUERY_CYCLE, RadioSession, SmlightCollector
 from test_inverter_details import verified_registers
 from test_smlight_poll import power_response
@@ -166,18 +167,18 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(self.collector.snapshot()["state"], "live")
         self.collector.accept_response(self.frame(2, observed_at=time.time() - 181), "power")
         self.assertEqual(self.collector.snapshot()["state"], "stale")
-        with patch.object(server, "solar_history", self.history), patch.object(
-            server, "smlight_collector", self.collector
+        with patch.object(collector, "solar_history", self.history), patch.object(
+            collector, "smlight_collector", self.collector
         ):
-            payload = server.smlight_payload()
+            payload = collector.smlight_payload()
         self.assertEqual(payload["solar_w"], 500.0)
         self.assertEqual(payload["collector"]["state"], "stale")
 
     def test_empty_history_has_no_fabricated_reading_or_timestamp(self):
-        with patch.object(server, "solar_history", self.history), patch.object(
-            server, "smlight_collector", self.collector
+        with patch.object(collector, "solar_history", self.history), patch.object(
+            collector, "smlight_collector", self.collector
         ):
-            payload = server.smlight_payload()
+            payload = collector.smlight_payload()
         self.assertIsNone(payload["solar_w"])
         self.assertIsNone(payload["timestamp"])
         self.assertIsNone(payload["solar"]["lifetime_wh"])
@@ -207,7 +208,7 @@ class CollectorTests(unittest.TestCase):
         session.receive.side_effect = receive
         with patch("smlight_collector.time.monotonic", side_effect=lambda: clock[0]):
             self.collector.run_session(session)
-        frames = [server.decode_ieee802154_frame({
+        frames = [decode_ieee802154_frame({
             "raw": call.args[0][:-2].hex(), "type": "data",
         }) for call in session.transmit.call_args_list]
         self.assertEqual(sum(f.get("cluster_id") == "0x8001" for f in frames), 1)
@@ -371,7 +372,7 @@ class CollectorTests(unittest.TestCase):
         session.check_health.assert_called_once()
         # A quiet inverter still needs the coordinator's network maintenance.
         self.assertEqual(session.transmit.call_count, 1)
-        frame = server.decode_ieee802154_frame({
+        frame = decode_ieee802154_frame({
             "raw": session.transmit.call_args.args[0][:-2].hex(), "type": "data",
         })
         self.assertEqual(frame["network_command_id"], 8)

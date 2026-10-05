@@ -16,7 +16,7 @@ Python dependencies. A site configuration is not required, even if a partially
 edited `radio.local.json` already exists.
 
 You can scan with the same SMLIGHT you will later use for the replacement.
-First stop any program connected to that SMLIGHT, including `server.py`, ZHA,
+First stop any program connected to that SMLIGHT, including `collector.py`, ZHA,
 Zigbee2MQTT, or OTBR. The `--exclusive-radio` flag confirms you have done this:
 the capture process resets and configures the bridge for listening. It never
 stops another service automatically. A separate receiver is useful if you want
