@@ -36,9 +36,14 @@ file in that directory.
    `uv sync --locked`. `pyproject.toml` declares dependencies, `uv.lock`
    pins them, and `.python-version` selects Python 3.12 by default. Container
    builds use the same lockfile. Keep metadata and lockfile changes together.
-4. If radio settings are missing, follow [discovery](docs/discovery.md). Offline
-   capture analysis does not touch hardware. A live scan resets/configures the
-   SMLIGHT for listening, so establish exclusive access before passing
+4. Run [discovery](docs/discovery.md) as the default path for a new installation.
+   Assume the user starts with the inverter and a SMLIGHT, and help locate the
+   bridge's LAN address through its web interface or router's device list.
+   Gather the channel, PAN IDs, and EUIs with the tool rather than asking the user
+   to supply them. A complete, verified configuration for the same inverter and
+   network can be reused. Offline capture analysis does not touch hardware.
+   A live scan resets/configures the SMLIGHT for listening, so establish
+   exclusive access before passing
    `--exclusive-radio`. Do not run it alongside a collector using that bridge.
    A working original SolarCity box may stay on during passive discovery.
 5. Review the selected inverter's evidence and use the
@@ -107,9 +112,11 @@ the OpenThread RCP interface used by this collector.
    This application uses raw IEEE 802.15.4 through RCP; stop at bridge setup in
    the vendor guide. Do not create a Thread network or install its OTBR add-on
    for this integration. Leave the inverter's Digi firmware and settings alone.
-4. Follow [discovery](docs/discovery.md#gather-a-new-capture) from the intended
-   collector host. A successful scan verifies TCP and Spinel access; receiving
-   no inverter frames does not by itself establish a firmware problem. Compare
+4. Install the Python dependencies from setup step 3, then run
+   [discovery](docs/discovery.md#gather-a-new-capture) from the intended collector
+   host using the bridge's LAN address. No inverter address or network identity
+   is required to start the scan. A successful scan verifies TCP and Spinel access;
+   receiving no inverter frames does not by itself establish a firmware problem. Compare
    the capture tool's `Radio firmware:` output with the full tested version in
    [bridge setup](docs/setup.md#prepare-the-bridge).
 5. Put the bridge address and port in `SOLAR_RADIO_HOST` and `SOLAR_RADIO_PORT`.

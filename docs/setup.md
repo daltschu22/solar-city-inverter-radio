@@ -31,7 +31,35 @@ A different radio, firmware build, or Spinel implementation needs separate valid
 
 ## Obtain the network identity
 
-These are distinct parameters, even when their names sound similar:
+Run the [discovery tool](discovery.md#gather-a-new-capture) before filling in
+the collector configuration. Start with your SMLIGHT's IP address or hostname,
+which you can find in your router's device list and use to open the bridge's
+web interface. The tool scans for the channel, PAN IDs, and radio identities.
+
+Install the Python dependencies using the [quick start](../README.md#quick-start).
+Stop other programs connected to the SMLIGHT, then run from the repository root:
+
+```sh
+uv run python tools/discover_radio.py \
+  --host YOUR_BRIDGE_HOST \
+  --exclusive-radio \
+  --output captures/discovery.json
+```
+
+Replace `YOUR_BRIDGE_HOST` with that LAN address. `--exclusive-radio` confirms
+the bridge is available for the scan, which resets it into listening mode.
+Leave the inverter powered and allow about five minutes. A working original
+SolarCity collector can stay on during discovery; power it off before starting
+the replacement collector.
+
+Review the selected inverter in `captures/discovery.json` and use the
+[report-to-config mapping](discovery.md#apply-reviewed-values) to populate `.env`.
+If the report has missing or conflicting fields, follow
+[the incomplete-report guide](discovery.md#if-the-report-is-incomplete) before
+starting collection. A complete, verified configuration for this inverter and
+network can be reused instead of scanning.
+
+The discovered values and bridge settings have these meanings:
 
 | Environment variable | Meaning and source |
 | --- | --- |
@@ -48,14 +76,11 @@ XBee `ID` is the **configured** extended PAN setting. `ID=0` means automatic
 selection; it does not mean the operating extended PAN is zero. Record the
 operating value. Channel displays may be hexadecimal: `0x14` is decimal 20.
 
-Start with the [discovery tool](discovery.md) if the addresses are unknown. It
-can learn from inverter-originated traffic and also analyze a capture of a working
-original collector. Accessible radio configuration is another source. Follow the
-[report-to-config walkthrough](discovery.md#apply-reviewed-values) to map the
-observed fields into `.env`. Beacons contain the extended PAN; IEEE
-addresses appear in suitable network headers and device announcements. The
-collector's short address is `0x0000`. The inverter's short address may change
-and is learned at runtime.
+Discovery can learn from inverter-originated traffic or
+[analyze saved captures](discovery.md#analyze-existing-captures). Beacons contain
+the extended PAN; IEEE addresses appear in suitable network headers and device
+announcements. The collector's short address is `0x0000`. The inverter's short
+address may change and is learned at runtime.
 
 Confirm the captured network is unsecured and uses stack profile `0`. Also
 confirm the application profile `0xc105`, serial-data cluster `0x0011`, and

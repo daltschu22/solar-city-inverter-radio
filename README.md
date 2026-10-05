@@ -86,8 +86,8 @@ Run one collector per SMLIGHT. Other consumers share its API.
    uv sync --locked
    ```
 
-3. **Find your inverter's radio settings.** Skip to step 4 if you already know
-   its channel, both PAN IDs, and the inverter and original collector EUIs.
+3. **Run radio discovery.** Start with your SMLIGHT's IP address or hostname.
+   The tool scans for the inverter's channel, PAN IDs, and radio identities.
 
    Use the same SMLIGHT that will run the replacement. Close any other program
    connected to it, including this project's collector, before scanning.
@@ -115,6 +115,9 @@ Run one collector per SMLIGHT. Other consumers share its API.
    [If the report is incomplete](docs/discovery.md#if-the-report-is-incomplete)
    before continuing. Discovery may be incomplete, especially without a working
    collector; leave missing values unresolved rather than guessing them.
+
+   If you have a complete, verified configuration for this inverter and network,
+   you can reuse it in step 4 and skip the scan.
 4. Copy the template, then edit `.env`:
 
    ```sh

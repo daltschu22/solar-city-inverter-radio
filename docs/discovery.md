@@ -1,5 +1,10 @@
 # Discover radio settings without the original collector
 
+Run discovery after preparing the SMLIGHT bridge and before configuring the
+collector. Start with the bridge's LAN address; the scan gathers evidence for
+the inverter's channel, PAN IDs, and radio identities. Review the resulting
+report before copying values into `.env`.
+
 `tools/discover_radio.py` gathers candidate network settings from radio traffic.
 It does not load installation settings, import configured device identities, pair
 with a device, or start the replacement collector. Unknown settings remain unknown.
