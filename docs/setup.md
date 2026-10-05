@@ -12,22 +12,50 @@ settings from traffic; review its evidence before configuring the collector.
 
 ## Prepare the bridge
 
-Use the tested SMLIGHT SLZB-06U with its CC2652P radio running the official
-OpenThread RCP build `20260304`. The working firmware version string was:
+The SMLIGHT receives radio packets from the inverter and passes them to the
+collector over your home network. These steps cover the **SLZB-06U with a
+CC2652P radio**.
+
+1. **Power the SMLIGHT and connect it to your network.** For initial setup,
+   connect an Ethernet cable to your router or switch and supply power. You can
+   configure Wi-Fi in the SMLIGHT's **Network** page if you want to use Wi-Fi
+   for the installation.
+2. **Open its web interface.** Find the SMLIGHT in your router's connected-device
+   list, then open its IP address in a browser. Confirm the model and radio chip.
+   Save the address: the discovery command below calls it `YOUR_BRIDGE_HOST`.
+   A DHCP reservation in your router keeps that address from changing.
+3. **Install the radio firmware.** Close any software connected to the SMLIGHT,
+   including ZHA, Zigbee2MQTT, a capture tool, or a running collector. In the
+   SMLIGHT web interface, follow **Mode → Matter-over-Thread** and let the firmware
+   update finish. This is SMLIGHT's documented way to install **OpenThread RCP**,
+   the radio firmware that lets our Python collector control the radio.
+   [SMLIGHT's flashing instructions](https://smlight.tech/manual/slzb-06/guide/thread-matter/)
+   show this step. Stop after flashing; the guide's Home Assistant and Thread
+   Border Router setup is for a different application.
+4. **Enable access over your network.** Select the Ethernet or Wi-Fi connection
+   you will use, then check the serial connection settings in the web interface.
+   Set the **TCP port to `6638`** and the **UART baud rate to `460800`**, then save.
+   The port is where the Python collector connects. The baud rate is the speed
+   of the connection inside the SMLIGHT between its network processor and radio.
+   Menu labels vary by firmware version; SMLIGHT's
+   [web-interface guide](https://smlight.tech/manual/slzb-06/guide/configuration/)
+   describes the **Mode**, **Network**, and serial settings pages.
+5. **Run discovery next.** Follow [Obtain the network identity](#obtain-the-network-identity)
+   below from the computer that will run the collector. Discovery connects to
+   the SMLIGHT, prints its radio firmware version, and scans for inverter traffic.
+
+The tested radio firmware is **SMLIGHT OpenThread RCP build `20260304`**.
+The web installer may offer a different build; check the version reported by
+discovery. Other builds have not been validated by this project.
+
+<details>
+<summary>Full tested radio firmware version (for comparison with discovery output)</summary>
 
 ```text
 OPENTHREAD/1.4.0.0; CC13XX_CC26XX thread-v1.4-ti-1.0-ea-1.0; SLZB-06U 20260304
 ```
 
-Configure its network serial bridge for TCP port `6638` and UART `460800`.
-Give the bridge a stable hostname or IP address reachable from the host running
-Python. The host does not need a USB connection. The tested bridge used USB-C
-power and Wi-Fi.
-
-SMLIGHT's [RCP setup instructions](https://smlight.tech/manual/slzb-06/guide/thread-matter/)
-cover the firmware mode. Use the RCP portion of that guide; this collector owns
-the TCP bridge directly. Do not run an OpenThread Border Router against it.
-A different radio, firmware build, or Spinel implementation needs separate validation.
+</details>
 
 ## Obtain the network identity
 
