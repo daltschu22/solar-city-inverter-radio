@@ -13,10 +13,10 @@ a Tesla account or cloud connection.
 
 ## Quick start
 
-**[Set up the collector →](docs/setup.md)**
+**[Follow the setup guide →](docs/setup.md)**
 
-The guide covers preparing the SMLIGHT, discovering the inverter's settings,
-generating `.env`, and getting your first readings.
+Configure the SMLIGHT, discover your inverter, and start collecting data with
+or without the included dashboard.
 
 ## Compatibility
 
