@@ -79,6 +79,20 @@ assert Coordinator().assigned_address == 0x6789
             config = load_config()
         self.assertEqual((config.channel, config.pan_id), (25, 0x1234))
 
+    def test_passive_mode_and_freshness_are_explicit_and_validated(self):
+        with patch.dict(os.environ, self.env):
+            self.assertEqual(load_config().mode, "replacement")
+        with patch.dict(os.environ, {**self.env, "SOLAR_COLLECTOR_MODE": "passive",
+                                     "SOLAR_PASSIVE_STALE_SECONDS": "600"}):
+            config = load_config()
+            self.assertEqual((config.mode, config.passive_stale_seconds), ("passive", 600))
+        for name, values in (("SOLAR_COLLECTOR_MODE", ("", "listen", "PASSIVE")),
+                             ("SOLAR_PASSIVE_STALE_SECONDS", ("", "0", "29", "86401", "1.5"))):
+            for value in values:
+                with self.subTest(name=name, value=value), patch.dict(os.environ, {**self.env, name: value}):
+                    with self.assertRaisesRegex(ValueError, name):
+                        load_config()
+
     def test_each_required_variable_must_be_present(self):
         optional = {"SOLAR_RADIO_PORT", "SOLAR_INITIAL_ADDRESS"}
         for name in self.env.keys() - optional:

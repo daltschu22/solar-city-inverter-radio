@@ -185,6 +185,7 @@ class SmlightCollector:
         self.energy = None
         self.energy_at = 0
         self.status = {
+            "mode": "replacement",
             "state": "connecting", "host": host, "channel": CHANNEL,
             "interval_seconds": interval, "reconnect_interval_seconds": reconnect_interval,
             "last_poll_at": None, "last_reading_at": None,

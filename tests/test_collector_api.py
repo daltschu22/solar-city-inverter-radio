@@ -99,6 +99,30 @@ class CollectorApiTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path)[0], 404)
 
+    def test_passive_startup_never_constructs_replacement_collector(self):
+        from collector.config import RadioConfig
+        configuration = RadioConfig(host="radio.example.invalid", configured=True,
+                                    mode="passive", passive_stale_seconds=600)
+        with patch("collector.config.require_configured", return_value=configuration), \
+                patch.object(collector, "SOLAR_HISTORY_PATH", self.history.path), \
+                patch.object(collector, "ThreadingHTTPServer"), \
+                patch.object(collector.signal, "signal"), \
+                patch("collector.smlight_collector.SmlightCollector") as replacement, \
+                patch("collector.passive.PassiveCollector") as passive:
+            collector.main()
+        replacement.assert_not_called()
+        self.assertEqual(passive.call_args.kwargs["stale_after"], 600)
+        passive.return_value.start.assert_called_once()
+        passive.return_value.stop.assert_called_once()
+
+    def test_passive_history_has_freshness_threshold_without_polling_interval(self):
+        self.collector.interval = None
+        self.collector.stale_after = 600
+        _, body = self.request("GET", "/api/history?range=1h")
+        result = json.loads(body)
+        self.assertIsNone(result["poll_interval_seconds"])
+        self.assertEqual(result["reading_stale_after_seconds"], 600)
+
     def test_cached_energy_keeps_its_own_timestamp_when_power_updates(self):
         self.history.record([
             {"capture_id": "energy", "observed_at": 100, "capture_sweep": 1,

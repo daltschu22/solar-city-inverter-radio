@@ -5,6 +5,11 @@ Run [the collector](setup.md) and point Home Assistant's
 `/api/live`. The collector handles the inverter radio; Home Assistant reads the
 cached measurements over HTTP. The included dashboard can remain stopped.
 
+Both replacement and experimental passive mode expose this API. In passive mode,
+the original box controls the reading cadence. Adjust the sensor age thresholds
+below to that cadence and your chosen `SOLAR_PASSIVE_STALE_SECONDS`; changing
+Home Assistant's `scan_interval` only changes how often it reads the cached API.
+
 ## Make the API reachable
 
 If Home Assistant runs on another computer or in a container, bind the collector

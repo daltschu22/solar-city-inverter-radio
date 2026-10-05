@@ -3,6 +3,8 @@
 This implementation covers the subset of an unsecured legacy Digi Zigbee network
 needed by one known Power-One inverter. The bridge handles the radio and MAC
 acknowledgments; Python handles coordinator behavior and application traffic.
+Those responsibilities apply to replacement mode. Passive mode leaves all network
+and query management to the original SolarCity/Tesla box.
 
 ```mermaid
 flowchart LR
@@ -128,6 +130,8 @@ The common identity model is split into two nearby reads. Small diagnostic reads
 avoid needing fragmented responses in the production polling path. The offline
 decoder can reconstruct supported fragmented captures; the live poller rejects
 fragmented responses.
+The passive collector separately reassembles bounded fragmented responses to
+observed requests.
 
 For example, read five registers starting at 40360:
 
@@ -182,3 +186,46 @@ The supported decoder is tied to this register map. Confirm identity, model IDs,
 addresses, scale factors, and invalid-value handling before adapting another
 firmware. The test suite covers encoding, filtering, startup/rejoin behavior,
 retries, storage, and chart gaps without transmitting over the air.
+
+## Passive monitoring
+
+Select the mode in [setup](setup.md#choose-how-to-collect-readings). The listener
+opens the SMLIGHT bridge exclusively and configures raw monitor reception on the
+discovered channel. It keeps the radio's hardware EUI, uses unassigned PAN and
+short addresses (`0xffff`), and does not invoke transmit, association, coordinator,
+or APS acknowledgment logic. No original-collector identity is programmed into
+the radio. It verifies monitor mode during periodic transport health checks and
+fails the session if that mode is lost.
+
+The [OpenThread TI radio implementation](https://github.com/openthread/ot-cc13x2-cc26x2/blob/main/src/cc2652/radio.c)
+changes frame filtering for promiscuous reception while retaining its automatic
+ACK setting. Monitor mode alone is therefore not proof of radio silence: the
+unassigned address configuration keeps this receiver from being an addressed
+member of the installation's network. Actual firmware behavior, including absence
+of unintended hardware ACKs, still needs over-the-air validation. The tested TI
+RCP build has omitted ACK-requested unicast traffic during capture; passive mode
+does not fix that firmware limitation. Broadcast discovery traffic alone is not
+enough to collect measurements.
+
+The streaming matcher requires the configured channel, PAN, both EUIs, direct
+MAC/network addresses, Digi profile/cluster/endpoints, and valid unsecured data.
+It uses one observed unit-1/function-3 request at a time and expires it after ten
+seconds. Overlapping requests quarantine that window; retransmissions are
+deduplicated within it. Response length, reverse addresses, and Modbus CRC must
+match. Fragment reassembly requires the first block and every continuation, with
+at most eight blocks and 255 bytes, inside the request window. Missing requests,
+incomplete fragments, exceptions, and unmatched responses create no measurements.
+
+Modbus RTU has no transaction ID. A listener cannot prove attribution if an entire
+intervening request is missed and a same-length response arrives inside the
+window. This is another reason to treat passive results as experimental and
+compare them with the original monitoring system before relying on them.
+
+Only model 201 meter readings enter production power/energy history. Complete
+diagnostic blocks populate the existing telemetry groups when observed; the
+listener never asks Tesla for missing blocks. Energy from a separate meter read
+is attached to a subsequent power reading for at most 120 seconds, capped by the
+configured passive freshness threshold. Model 101 energy stays in diagnostics.
+Reconnects clear pending exchanges, fragments, and cached energy. They never
+trigger active recovery. Passive silence is reported as missing or stale data,
+without nighttime inference or fabricated zero readings.

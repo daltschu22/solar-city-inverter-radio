@@ -31,6 +31,10 @@ agents helping with setup or changing the project.
   identities, use synthetic test settings on live hardware, or overwrite a
   working configuration. Saved captures can be reanalyzed without a live scan.
 - Power off the original SolarCity/Tesla collector before replacement collection.
+  For `SOLAR_COLLECTOR_MODE=passive`, leave the original box operating. Passive
+  mode must never transmit, assume its identity, or fall back to replacement.
+  It requires both sides of complete observed exchanges; live SMLIGHT reception
+  remains unverified. Do not change a working installation's mode for routine tests.
   Establish exclusive bridge access for scans and collection. Act on existing
   authorization; ask when required physical state or service ownership is unknown.
 - Use the user's chosen service manager and persistent storage. Keep local

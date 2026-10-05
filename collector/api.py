@@ -58,6 +58,8 @@ class Handler(BaseHTTPRequestHandler):
                 history = solar_history.query(range_name)
                 if smlight_collector is not None:
                     history["poll_interval_seconds"] = smlight_collector.interval
+                    if smlight_collector.interval is None:
+                        history["reading_stale_after_seconds"] = smlight_collector.stale_after
                 return self.send_json(200, history)
             except ValueError as exc:
                 return self.send_json(400, {"error": str(exc)})
@@ -130,12 +132,18 @@ def main():
     print(f"SolarCity collector API: port {port}; GET /api/live or /api/history")
     print(f"Solar history: {SOLAR_HISTORY_PATH}")
     from collector.smlight_collector import SmlightCollector
-    smlight_collector = SmlightCollector(host, solar_history, port=configuration.port,
-                                       interval=configuration.poll_interval_seconds,
-                                       night_schedule=night_schedule,
-                                       reconnect_interval=configuration.reconnect_interval_seconds)
+    if configuration.mode == "passive":
+        from collector.passive import PassiveCollector
+        smlight_collector = PassiveCollector(host, solar_history, port=configuration.port,
+                                            stale_after=configuration.passive_stale_seconds,
+                                            reconnect_interval=configuration.reconnect_interval_seconds)
+    else:
+        smlight_collector = SmlightCollector(host, solar_history, port=configuration.port,
+                                           interval=configuration.poll_interval_seconds,
+                                           night_schedule=night_schedule,
+                                           reconnect_interval=configuration.reconnect_interval_seconds)
     smlight_collector.start()
-    print(f"Radio poller: SMLIGHT at {host}:{configuration.port}")
+    print(f"Radio collector ({configuration.mode}): SMLIGHT at {host}:{configuration.port}")
     try:
         server.serve_forever()
     finally:

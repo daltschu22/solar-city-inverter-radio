@@ -4,6 +4,11 @@ Read solar production locally using a **SMLIGHT SLZB-06U** in place of the
 SolarCity / Tesla monitoring box. The collector talks to the inverter's radio,
 saves readings to SQLite, and provides a JSON API.
 
+An experimental **passive mode** can listen alongside a working original box.
+It uses the same API, history, and optional dashboard. Live passive reception is
+unverified, and the SMLIGHT firmware can omit the unicast packets it needs.
+Choose a mode in the [setup guide](docs/setup.md#choose-how-to-collect-readings).
+
 **Tested inverter: Power-One PVI-5000-OUTD-US-Z** with its SolarCity-era Digi XBee
 radio. Power-One made the inverter; SolarCity supplied the monitoring equipment.
 
@@ -30,7 +35,7 @@ or without the included dashboard.
 **Status:** experimental, based on one installation. Independent hardware
 reproductions and long-term reliability remain unverified.
 
-The collector uses the inverter's existing radio network and the original
+Replacement mode uses the inverter's existing radio network and the original
 collector's radio identity. Discovery can recover these from inverter traffic
 on an operating network. Recovery from a fully unjoined inverter is unverified.
 Other inverter families, encrypted networks, multiple inverters, and pairing
@@ -53,6 +58,7 @@ The original SolarCity monitoring box replaced by this project. The SMLIGHT
 SLZB-06U and Python collector take over its radio-network and measurement role.
 Keep the original box powered off while running the replacement, which reuses
 its radio identity.
+In passive mode, leave this box powered and working; it still manages the inverter.
 
 ## Use your readings
 

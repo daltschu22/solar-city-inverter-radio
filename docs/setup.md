@@ -1,7 +1,12 @@
-# Set up the collector
+# Set up local solar monitoring
 
 This guide takes you from a SMLIGHT and a compatible inverter to local readings.
 The collector can run by itself; the dashboard and Home Assistant are optional.
+
+Choose **replacement** mode to retire the SolarCity/Tesla box, or **passive** mode
+to leave it running and listen to its readings. Passive mode is experimental and
+has not been verified on live hardware. The current SMLIGHT RCP firmware can miss
+unicast traffic, so discovery succeeding does not guarantee passive readings.
 
 Before starting, confirm that your equipment matches the
 [compatibility list and photos](../README.md#compatibility). You will need the
@@ -112,6 +117,29 @@ Open the generated `.env` and confirm the SMLIGHT address. Review the selected
 inverter in `captures/discovery.json`: nearby equipment can appear in a scan.
 Keep these files private; their standard paths are ignored by Git.
 
+### Choose how to collect readings
+
+The default, `SOLAR_COLLECTOR_MODE=replacement`, takes over the original box's
+radio identity and queries the inverter. The original box must be powered off
+while replacement collection runs.
+
+To keep the original box working alongside this collector, add this line to `.env`:
+
+```dotenv
+SOLAR_COLLECTOR_MODE=passive
+```
+
+In passive mode, keep the original box powered and operating normally. The SMLIGHT
+listens on the discovered channel; it does not send queries, coordinator replies,
+or application acknowledgments. The configured EUIs identify the exchanges to
+listen for. The original box controls the reading frequency and network recovery.
+Only this program should connect to the SMLIGHT's TCP bridge.
+
+Passive readings require both sides of a complete exchange. If the firmware
+omits unicast packets, this mode cannot recover them. It never switches to
+replacement mode automatically. [Passive protocol details](protocol.md#passive-monitoring)
+describe the matching rules and firmware limitations.
+
 Validate the configuration:
 
 ```sh
@@ -127,7 +155,8 @@ are listed in [Environment variables](#environment-variables) at the end of this
 
 ## Start and verify
 
-**Power off the original SolarCity/Tesla collector**, if present, and finish any
+For **replacement mode, power off the original SolarCity/Tesla collector**, if
+present. For **passive mode, leave that box powered and working**. Finish any
 capture still using the SMLIGHT. Run one collector per bridge.
 
 Start collection in your terminal:
@@ -139,9 +168,17 @@ uv run --env-file .env python -m collector
 Leave it running. For Docker or Podman, use the [container instructions](#run-the-collector-in-a-container)
 below instead of running a second collector.
 
-The collector listens for 30 seconds at startup, then waits for identifiable
-inverter traffic. With the default settings, power readings normally update about
-every two minutes once communication is established.
+In replacement mode, the collector listens for 30 seconds at startup, then waits
+for identifiable inverter traffic. With the default settings, power readings
+normally update about every two minutes once communication is established.
+
+Passive mode starts listening immediately. Its timing depends on the original
+box. Check that `collector.mode` is `passive`, `collector.observed_requests`
+increases, and `collector.responses` increases as complete replies are matched.
+`collector.requests` and `collector.network_transmissions` stay at zero. An
+increasing packet count without fresh readings is insufficient: the receiver may
+be missing requests, responses, or fragments. Leave the working Tesla box on;
+changing our polling interval cannot fix missing passive packets.
 
 Open <http://127.0.0.1:8766/api/live> on this computer. This is a JSON data page.
 Check for a recent `timestamp`, a plausible `solar_w` value, and increasing
@@ -246,10 +283,12 @@ Additional environment settings:
 | `SOLAR_HISTORY_PATH` | `data/solar-history.sqlite3` in the repository root |
 | `SOLAR_API_BIND` | `127.0.0.1`; collector API listening address |
 | `SOLAR_API_PORT` | `8766`; collector API port |
-| `SOLAR_POLL_INTERVAL_SECONDS` | `60`; seconds between measurement queries, integer `15`–`3600` |
+| `SOLAR_COLLECTOR_MODE` | `replacement`; set `passive` to listen alongside the original box (experimental) |
+| `SOLAR_POLL_INTERVAL_SECONDS` | `60`; replacement mode only, seconds between measurement queries, integer `15`–`3600` |
+| `SOLAR_PASSIVE_STALE_SECONDS` | `300`; passive mode only, freshness and chart-gap threshold in seconds, integer `30`–`86400`; does not change Tesla's query timing |
 | `SOLAR_RECONNECT_INTERVAL_SECONDS` | `15`; seconds before retrying a failed radio session, integer `1`–`3600` |
 | `SOLAR_DASHBOARD` | `false`; set `true` to also run the dashboard with the container's default command |
-| `SOLAR_LATITUDE`, `SOLAR_LONGITUDE` | Unset; optional, supply both for nighttime inference |
+| `SOLAR_LATITUDE`, `SOLAR_LONGITUDE` | Unset; optional, supply both for nighttime inference in replacement mode |
 
 To tune collection, add the desired values to the generated `.env` or service
 environment and restart the collector. For example:
@@ -259,8 +298,8 @@ SOLAR_POLL_INTERVAL_SECONDS=120
 SOLAR_RECONNECT_INTERVAL_SECONDS=30
 ```
 
-The polling interval is the time between individual measurement queries. Power
-alternates with energy and diagnostics, so `120` means a power reading about
+In replacement mode, the polling interval is the time between individual
+measurement queries. Power alternates with energy and diagnostics, so `120` means a power reading about
 every four minutes. Energy queries are at most eight polling intervals apart
 in the normal cycle. The API reports the configured interval, and the dashboard
 uses it for freshness and chart gaps. See the [Home Assistant guide](home-assistant.md)
@@ -269,6 +308,8 @@ for its sensor age thresholds.
 The reconnect interval applies after a radio session fails, such as a lost TCP
 connection. It does not schedule radio resets. Coordinator replies and the
 15-second link-status schedule run independently of measurement polling.
+Passive mode reconnects only its listening session, without network maintenance.
+It reports old readings as stale; it does not infer nighttime standby from silence.
 
 Coordinates stay in your runtime environment. Nighttime inference never creates
 measurements or changes inverter settings. It requires a recent low-power reading

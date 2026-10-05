@@ -18,6 +18,8 @@ class RadioConfig:
     initial_address: int = 0x2345
     poll_interval_seconds: int = 60
     reconnect_interval_seconds: int = 15
+    mode: str = "replacement"
+    passive_stale_seconds: int = 300
     configured: bool = False
 
 
@@ -32,6 +34,8 @@ ENV_FIELDS = {
     "initial_address": "SOLAR_INITIAL_ADDRESS",
     "poll_interval_seconds": "SOLAR_POLL_INTERVAL_SECONDS",
     "reconnect_interval_seconds": "SOLAR_RECONNECT_INTERVAL_SECONDS",
+    "mode": "SOLAR_COLLECTOR_MODE",
+    "passive_stale_seconds": "SOLAR_PASSIVE_STALE_SECONDS",
 }
 
 
@@ -69,6 +73,9 @@ def load_config():
         return value.lower()
 
     collector, inverter = eui("collector_eui"), eui("inverter_eui")
+    mode = data.get("mode", "replacement")
+    if mode not in {"replacement", "passive"}:
+        raise ValueError("SOLAR_COLLECTOR_MODE must be replacement or passive")
     if collector == inverter:
         raise ValueError("Collector and inverter identities must differ")
     return RadioConfig(
@@ -80,6 +87,8 @@ def load_config():
         initial_address=number("initial_address", 0x2345, 1, 0xFFF7),
         poll_interval_seconds=number("poll_interval_seconds", 60, 15, 3600),
         reconnect_interval_seconds=number("reconnect_interval_seconds", 15, 1, 3600),
+        mode=mode,
+        passive_stale_seconds=number("passive_stale_seconds", 300, 30, 86400),
         configured=True,
     )
 

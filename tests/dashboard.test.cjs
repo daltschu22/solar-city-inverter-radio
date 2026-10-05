@@ -41,6 +41,24 @@ test("missing values are not formatted as zero", () => {
   assert.equal(run("formatPower(0)"), "0 W");
 });
 
+test("passive readings show observed exchanges and their own freshness", () => {
+  const { run, nodes } = dashboard();
+  run(`renderLive({timestamp: Date.now() / 1000 - 240, solar_w: 500, collector: {
+    mode: "passive", state: "live", interval_seconds: null, reading_stale_after_seconds: 300,
+    requests: 0, observed_requests: 10, responses: 8, warning: "Experimental passive reception"
+  }});`);
+  assert.equal(nodes.get("#collector-state").textContent, "Listening");
+  assert.equal(nodes.get("#power-label").textContent, "Producing now");
+  assert.equal(nodes.get("#poll-interval").textContent, "Tesla controlled");
+  assert.equal(nodes.get("#poll-results").textContent, "8 / 10");
+  assert.equal(nodes.get("#poll-results-label").textContent, "Matched / observed queries");
+  const result = run(`prepareHistory([
+    {timestamp: 1000, solar_w: 500}, {timestamp: 1240, solar_w: 550},
+    {timestamp: 1600, solar_w: 550}
+  ], false, null, 300)`);
+  assert.equal(result.gaps.length, 1);
+});
+
 test("real zero readings stay while missing points and long gaps are distinct", () => {
   const { run } = dashboard();
   const result = run(`prepareHistory([

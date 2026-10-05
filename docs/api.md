@@ -18,12 +18,30 @@ curl 'http://127.0.0.1:8766/api/history?range=24h'
 | `solar.lifetime_wh` | Latest saved cumulative exported energy in Wh, or `null` |
 | `solar.lifetime_observed_at` | Unix seconds when that energy value was saved with a validated power reading |
 | `collector.connected` | Whether the collector's bridge session is connected |
+| `collector.mode` | `replacement` or `passive`; top-level `mode` remains `smlight` for the transport |
 | `collector.state` | Current status, such as `live`, `stale`, `discovering`, or `standby` |
-| `collector.interval_seconds` | Configured interval between radio measurement queries; defaults to 60 |
+| `collector.interval_seconds` | Replacement query interval (default 60); `null` in passive mode |
 | `collector.reconnect_interval_seconds` | Delay before retrying a failed radio session; defaults to 15 |
 | `collector.telemetry_stale_after_seconds` | Age threshold for diagnostic groups, scaled with the polling interval |
 | `collector.requests`, `collector.responses`, `collector.timeouts` | Polling counters for this collector process |
 | `collector.telemetry` | Identity and diagnostic groups, each with values, observation time, and a stale flag |
+
+In passive mode, `collector.state` starts as `listening`. `packets_observed`
+counts matching Digi data frames, including retries and fragments;
+`observed_requests` counts complete, valid requests seen from the original box;
+`responses` counts matched complete replies, including diagnostic replies.
+`unmatched_responses` and `expired_requests` help identify incomplete reception.
+These counters start with the process and accumulate across reconnects. They
+cannot count packets the receiver never delivers.
+`requests`, `timeouts`, and network-transmission counters remain zero because this
+collector sends no queries. `last_poll_at` is `null`.
+
+Passive `reading_stale_after_seconds` and `telemetry_stale_after_seconds` use
+`SOLAR_PASSIVE_STALE_SECONDS` (default 300). The original box controls the cadence;
+polling settings do not affect it. `warning` describes the experimental reception
+limitation. Passive mode does not report inferred nighttime standby. Energy from
+a separate reply is reused for at most 120 seconds, capped by the passive freshness
+threshold. The following polling-cycle timings apply to replacement mode.
 
 Power normally arrives every two polling intervals (two minutes by default).
 Retained values stay visible during
@@ -50,6 +68,10 @@ contains `points` with `timestamp`, `solar_w`, and optional `lifetime_wh`, plus
 summary fields and `poll_interval_seconds`. Large ranges are downsampled for
 charting; check `downsampled`. Missing energy remains `null`. An invalid range
 returns `400`.
+
+Passive history returns `poll_interval_seconds: null` and
+`reading_stale_after_seconds` for chart-gap handling. It uses the same points and
+storage format as replacement mode.
 
 ## Process health: `GET /healthz`
 

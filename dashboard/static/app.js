@@ -103,6 +103,7 @@ function collectorLabel(state) {
   if (state === "connecting") return "Connecting";
   if (state === "discovering") return "Finding inverter";
   if (state === "waiting") return "Waiting for inverter";
+  if (state === "listening") return "Listening for exchanges";
   if (state === "conflict") return "Radio conflict";
   if (state === "stale") return "Reading overdue";
   return "Offline";
@@ -198,6 +199,7 @@ function renderLive(data) {
   const collector = data.collector || {};
   const state = collector.state || "disconnected";
   const standby = state === "standby";
+  const passive = collector.mode === "passive";
   renderTelemetry(collector.telemetry, standby, collector.telemetry_stale_after_seconds);
   const timestamp = hasNumber(data.timestamp) ? Number(data.timestamp) : null;
 
@@ -207,18 +209,20 @@ function renderLive(data) {
   captureDetail.textContent = timestamp !== null
     ? new Date(timestamp * 1000).toLocaleString()
     : "No reading received";
-  const freshnessSeconds = hasNumber(collector.interval_seconds) && Number(collector.interval_seconds) > 0
-    ? Number(collector.interval_seconds) * 3 : 180;
+  const freshnessSeconds = hasNumber(collector.reading_stale_after_seconds)
+    ? Number(collector.reading_stale_after_seconds)
+    : hasNumber(collector.interval_seconds) && Number(collector.interval_seconds) > 0
+      ? Number(collector.interval_seconds) * 3 : 180;
   const fresh = timestamp !== null && Date.now() / 1000 - timestamp <= freshnessSeconds;
   powerLabel.textContent = fresh ? "Producing now" : "Last verified output";
 
   statusDot.className = `dot ${state}`;
-  collectorState.textContent = collectorLabel(state);
+  collectorState.textContent = passive && state === "live" ? "Listening" : collectorLabel(state);
   statusText.textContent = state === "live" ? "Receiving solar readings" : collectorLabel(state);
   statusDetail.textContent = standby
     ? `Inverter likely asleep; SMLIGHT online.${hasNumber(collector.standby_until)
       ? ` Sunrise ${new Date(collector.standby_until * 1000).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})}.` : ""}`
-    : collector.last_error || (fresh
+    : collector.last_error || collector.warning || (fresh
     ? "Verified inverter response"
     : timestamp !== null ? "Last verified reading is preserved" : "Awaiting inverter reading");
 
@@ -230,10 +234,13 @@ function renderLive(data) {
     : "Channel 14";
   radioHost.textContent = collector.host || "Not configured";
   radioRssi.textContent = hasNumber(collector.rssi) ? `${collector.rssi} dBm` : "--";
-  pollInterval.textContent = hasNumber(collector.interval_seconds) ? `${collector.interval_seconds}s` : "--";
+  pollInterval.textContent = passive ? "Tesla controlled" : hasNumber(collector.interval_seconds) ? `${collector.interval_seconds}s` : "--";
+  document.querySelector("#last-poll-label").textContent = passive ? "Last inverter packet" : "Last query";
+  document.querySelector("#poll-results-label").textContent = passive ? "Matched / observed queries" : "Successful queries";
   lastPoll.textContent = formatRelative(collector.last_poll_at);
+  if (passive) lastPoll.textContent = formatRelative(collector.last_packet_at);
   pollResults.textContent = hasNumber(collector.requests)
-    ? `${collector.responses || 0} / ${collector.requests}` : "--";
+    ? `${collector.responses || 0} / ${passive ? collector.observed_requests || 0 : collector.requests}` : "--";
 
   const signature = [
     data.timestamp,
@@ -269,7 +276,7 @@ function median(values) {
     : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-function prepareHistory(points, downsampled, pollIntervalSeconds = 60) {
+function prepareHistory(points, downsampled, pollIntervalSeconds = 60, staleAfterSeconds = null) {
   const validPoints = (points || [])
     .filter(
       (point) =>
@@ -290,7 +297,8 @@ function prepareHistory(points, downsampled, pollIntervalSeconds = 60) {
   // do not infer the normal cadence from sparse readings separated by outages.
   const pollInterval = hasNumber(pollIntervalSeconds) && Number(pollIntervalSeconds) > 0
     ? Number(pollIntervalSeconds) : 60;
-  const readingGapThreshold = Math.max(90, pollInterval * 3);
+  const readingGapThreshold = hasNumber(staleAfterSeconds) && Number(staleAfterSeconds) > 0
+    ? Number(staleAfterSeconds) : Math.max(90, pollInterval * 3);
   const gapThreshold = downsampled
     ? Math.max(30 * 60, typicalInterval * 3, readingGapThreshold)
     : readingGapThreshold;
@@ -485,7 +493,7 @@ function renderChart(prepared) {
 }
 
 function renderHistory(data) {
-  const prepared = prepareHistory(data.points, data.downsampled, data.poll_interval_seconds);
+  const prepared = prepareHistory(data.points, data.downsampled, data.poll_interval_seconds, data.reading_stale_after_seconds);
   rangePeak.textContent = formatPower(data.peak_w);
   rangeGenerated.textContent = formatEnergy(data.generated_wh);
   sampleCount.textContent = Number(data.sample_count || 0).toLocaleString();
