@@ -46,14 +46,17 @@ file in that directory.
    exclusive access before passing
    `--exclusive-radio`. Do not run it alongside a collector using that bridge.
    A working original SolarCity box may stay on during passive discovery.
-5. Review the selected inverter's evidence and use the
-   [report-to-config mapping](docs/discovery.md#apply-reviewed-values). Never
+5. Include `--write-env .env` in the discovery command to generate configuration.
+   Review the selected inverter's evidence and the generated file using the
+   [export guide](docs/discovery.md#apply-reviewed-values). Never
    guess unknown/conflicting fields or use test identities for live operation.
    The collector EUI must be the identity the inverter expects, not the new
    bridge's factory EUI. Recovery from a fully unjoined inverter with unknown
    settings is unverified; explain missing evidence instead of promising pairing.
-6. Save installation settings in ignored `.env` or the service environment.
-   Preserve existing settings; do not overwrite them with a template.
+6. Use the generated `.env` or transfer its reviewed settings to the service
+   environment. If export fails, resolve the missing or conflicting evidence;
+   select `--inverter-eui` when there are multiple candidates. Reanalyze saved
+   frames to export without repeating a live scan. Preserve existing files.
    Pass `--env-file .env` to `uv run` to load reviewed settings, as shown in
    [setup](docs/setup.md#environment-variables). Validate using
    `uv run --env-file .env python -m collector.config`; this opens no radio connection.
@@ -119,10 +122,10 @@ the OpenThread RCP interface used by this collector.
    receiving no inverter frames does not by itself establish a firmware problem. Compare
    the capture tool's `Radio firmware:` output with the full tested version in
    [bridge setup](docs/setup.md#prepare-the-bridge).
-5. Put the bridge address and port in `SOLAR_RADIO_HOST` and `SOLAR_RADIO_PORT`.
-   Populate the channel, PAN IDs, and both EUIs from reviewed discovery evidence
-   using the [field mapping](docs/discovery.md#apply-reviewed-values). The collector
-   applies these radio settings at startup. The expected collector EUI comes
+5. Use `--write-env .env` to export the bridge address, port, and discovered radio
+   settings, then review the result using the
+   [export guide](docs/discovery.md#apply-reviewed-values). The collector applies
+   these radio settings at startup. The expected collector EUI comes
    from the inverter's network; preserve its displayed byte order and leading
    zeroes. Keep settings in ignored `.env` or the service environment.
 6. Run `uv run --env-file .env python -m collector.config`. This validates values

@@ -1,5 +1,6 @@
 import json
 import contextlib
+import copy
 import io
 import os
 from pathlib import Path
@@ -10,7 +11,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from tools.discover_radio import analyze, beacon_fields, load_records, mac_payload_offset, main
+from tools.discover_radio import analyze, beacon_fields, environment_text, load_records, mac_payload_offset, main
 from synthetic_radio import records
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -168,3 +169,141 @@ class DiscoveryTests(unittest.TestCase):
                              '\n'.join(json.dumps(row) for row in source)):
                 p.write_text(contents)
                 self.assertEqual(load_records(p), source)
+
+
+class EnvironmentExportTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.frames = self.root / 'frames.json'
+        self.frames.write_text(json.dumps([startup(), beacon()]))
+        self.report = self.root / 'report.json'
+        self.env_file = self.root / '.env'
+        old_mask = os.umask(0o077)
+        self.addCleanup(os.umask, old_mask)
+
+    def run_cli(self, *extra, source=None):
+        source = source or ['--input', str(self.frames), '--bridge-host', 'radio.example.invalid']
+        argv = ['discover_radio.py', *source, '--output', str(self.report),
+                '--write-env', str(self.env_file), *extra]
+        with patch.object(sys, 'argv', argv), contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()), \
+                patch('socket.create_connection', side_effect=AssertionError('No sockets allowed')):
+            main()
+
+    def test_offline_export_round_trips_through_collector_validation(self):
+        with patch.dict(os.environ, {'SOLAR_RADIO_CHANNEL': 'invalid'}):
+            self.run_cli('--port', '12345')
+        settings = dict(line.split('=', 1) for line in self.env_file.read_text().splitlines()
+                        if line and not line.startswith('#'))
+        self.assertEqual(settings, {
+            'SOLAR_RADIO_HOST': 'radio.example.invalid', 'SOLAR_RADIO_PORT': '12345',
+            'SOLAR_RADIO_CHANNEL': '14', 'SOLAR_PAN_ID': '0x1234',
+            'SOLAR_EXTENDED_PAN_ID': '0x1122334455667788',
+            'SOLAR_COLLECTOR_EUI': COLLECTOR, 'SOLAR_INVERTER_EUI': INVERTER})
+        clean = {k: v for k, v in os.environ.items() if not k.startswith('SOLAR_')}
+        subprocess.run([sys.executable, '-m', 'collector.config'], cwd=ROOT,
+                       env={**clean, **settings}, check=True, capture_output=True)
+        self.assertEqual(self.env_file.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.report.stat().st_mode & 0o777, 0o600)
+
+    def test_live_export_uses_capture_host_and_port_and_preserves_existing_files(self):
+        source = ['--host', 'radio.example.invalid', '--port', '12345', '--exclusive-radio']
+
+        def capture(options):
+            self.assertEqual((options.host, options.port), ('radio.example.invalid', 12345))
+            self.assertFalse(options.beacon_request)
+            Path(f'{options.output}.json').write_text(self.frames.read_text())
+
+        with patch('tools.smlight_capture.capture', side_effect=capture) as gather:
+            self.run_cli(source=source)
+            original = self.env_file.read_bytes()
+            self.report.unlink()
+            with self.assertRaises(SystemExit):
+                self.run_cli(source=source)
+            self.assertEqual(gather.call_count, 1)
+            self.assertEqual(self.env_file.read_bytes(), original)
+
+    def test_incomplete_scan_keeps_report_without_creating_environment(self):
+        self.frames.write_text(json.dumps([startup()]))
+        with self.assertRaises(SystemExit) as error:
+            self.run_cli()
+        self.assertEqual(error.exception.code, 1)
+        self.assertTrue(self.report.exists())
+        self.assertFalse(self.env_file.exists())
+
+    def test_export_can_use_consistent_coordinator_beacon_evidence(self):
+        report = analyze([startup(), beacon(source=0)])
+        self.assertIn('SOLAR_EXTENDED_PAN_ID=0x1122334455667788\n',
+                      environment_text(report, 'radio.example.invalid', 6638))
+
+    def test_conflicts_security_and_unsupported_profile_block_export(self):
+        good = analyze([startup(), beacon()])
+        reports = [analyze([startup(), beacon(), beacon(source=0, extended_pan=123)])]
+        for field, value in [('security', {'unsecured': 1, 'secured': 1}),
+                             ('ambiguous_short_addresses', ['0x2345'])]:
+            report = copy.deepcopy(good)
+            report['networks'][0][field] = value
+            reports.append(report)
+        for state, value in [('observed', 2), ('unknown', None), ('conflict', None)]:
+            report = copy.deepcopy(good)
+            report['networks'][0]['network_fields']['stack_profile'].update(status=state, value=value)
+            reports.append(report)
+        for report in reports:
+            with self.subTest(report=report), self.assertRaises(ValueError):
+                environment_text(report, 'radio.example.invalid', 6638)
+
+    def test_multiple_candidates_require_selection_and_reject_same_eui_on_two_networks(self):
+        first = [startup(), beacon()]
+        second = [dict(row, channel=15, raw=row['raw'].replace('0200000000000002', '0300000000000002'))
+                  for row in first]
+        report = analyze(first + second)
+        with self.assertRaisesRegex(ValueError, 'Multiple'):
+            environment_text(report, 'radio.example.invalid', 6638)
+        self.assertIn(f'SOLAR_INVERTER_EUI={INVERTER}\n',
+                      environment_text(report, 'radio.example.invalid', 6638, INVERTER))
+        with self.assertRaisesRegex(ValueError, 'No matching'):
+            environment_text(report, 'radio.example.invalid', 6638, '0200000000000099')
+        duplicate = analyze(first + [dict(row, channel=15) for row in first])
+        with self.assertRaisesRegex(ValueError, 'Multiple'):
+            environment_text(duplicate, 'radio.example.invalid', 6638, INVERTER)
+
+    def test_cli_exports_selected_candidate_from_saved_capture(self):
+        first = [startup(), beacon()]
+        second = [dict(row, channel=15, raw=row['raw'].replace('0200000000000002', '0300000000000002'))
+                  for row in first]
+        self.frames.write_text(json.dumps(first + second))
+        self.run_cli('--inverter-eui', '0x' + INVERTER)
+        self.assertIn(f'SOLAR_INVERTER_EUI={INVERTER}\n', self.env_file.read_text())
+        self.assertIn('SOLAR_RADIO_CHANNEL=14\n', self.env_file.read_text())
+
+    def test_invalid_identities_and_pan_values_are_not_exported(self):
+        for frames in ([startup(), beacon(extended_pan=0)],
+                       [startup(), beacon(extended_pan=0xffffffffffffffff)],
+                       [dict(row, raw=row['raw'].replace('0200000000000002', '0200000000000003'))
+                        for row in [startup(), beacon()]],
+                       [dict(row, raw=row['raw'].replace('0100000000000002', '0200000000000002'))
+                        for row in [startup(), beacon()]]):
+            with self.subTest(frames=frames), self.assertRaises(ValueError):
+                environment_text(analyze(frames), 'radio.example.invalid', 6638)
+
+    def test_output_collisions_and_host_injection_are_rejected_before_capture(self):
+        for path in [self.report, self.root / 'report-frames.json', self.root / 'report-frames.pcap',
+                     self.root / 'report-frames.summary.json']:
+            with self.subTest(path=path), patch('tools.smlight_capture.capture') as capture:
+                with self.assertRaises(SystemExit):
+                    self.run_cli('--write-env', str(path), source=['--host', 'radio.example.invalid', '--exclusive-radio'])
+                capture.assert_not_called()
+        for host in ['radio.example.invalid\nSOLAR_API_BIND=0.0.0.0', '$(touch injected)',
+                     'https://radio.example.invalid', 'radio example']:
+            with self.subTest(host=host), self.assertRaises(SystemExit):
+                self.run_cli('--bridge-host', host)
+        self.assertFalse(self.env_file.exists())
+
+    def test_dangling_symlink_is_not_followed(self):
+        target = self.root / 'absent'
+        self.env_file.symlink_to(target)
+        with self.assertRaises(SystemExit):
+            self.run_cli()
+        self.assertFalse(target.exists())

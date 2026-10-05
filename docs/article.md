@@ -140,11 +140,10 @@ The main steps are:
 
 1. Confirm the inverter and radio match the supported legacy setup.
 2. Configure the SMLIGHT RCP bridge, then use the included
-   [discovery script and report-to-config guide](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/discovery.md)
-   to gather your channel, operating PAN IDs, expected collector EUI, and inverter EUI.
-   Existing captures or accessible radio configuration are also useful sources.
-3. Review the evidence, put the observed values in `.env`, and validate
-   the file with `uv run --env-file .env python -m collector.config`.
+   [discovery script](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/discovery.md)
+   with `--write-env .env` to gather the radio settings and generate configuration.
+3. Review the evidence and generated `.env`, then validate it with
+   `uv run --env-file .env python -m collector.config`.
 4. Power off the original collector, if present, and give the Python collector
    exclusive access to the radio bridge after capture has finished.
 5. Validate fresh readings, then observe startup and overnight recovery.

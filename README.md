@@ -102,32 +102,25 @@ Run one collector per SMLIGHT. Other consumers share its API.
    uv run python tools/discover_radio.py \
      --host YOUR_BRIDGE_HOST \
      --exclusive-radio \
-     --output captures/discovery.json
+     --output captures/discovery.json \
+     --write-env .env
    ```
 
    Leave the inverter powered and wait about five minutes for the scan to finish.
    If your original SolarCity box is still working, it can stay on during this
    listening step; power it off before starting the replacement in step 6.
 
-   Look for `5/5 settings` in the terminal output. Open `captures/discovery.json`
-   to review the detected inverter and its values, then continue to step 4.
-   If it finds fewer settings or no inverter, follow
-   [If the report is incomplete](docs/discovery.md#if-the-report-is-incomplete)
-   before continuing. Discovery may be incomplete, especially without a working
-   collector; leave missing values unresolved rather than guessing them.
+   The tool writes `.env` when it finds one complete, consistent candidate.
+   If it cannot export, it keeps the report and explains what is missing or
+   ambiguous. Follow the [discovery guide](docs/discovery.md#apply-reviewed-values)
+   to resolve the result. Existing files are never overwritten.
 
    If you have a complete, verified configuration for this inverter and network,
    you can reuse it in step 4 and skip the scan.
-4. Copy the template, then edit `.env`:
-
-   ```sh
-   cp config.example.env .env
-   ```
-
-   Enter your SMLIGHT address and the five reviewed radio settings. The
-   [field-by-field mapping](docs/discovery.md#apply-reviewed-values) shows exactly
-   which report value goes into each environment variable. Required values are
-   blank; use your own settings. `.env` and capture reports are ignored by Git.
+4. Review the generated `.env` and `captures/discovery.json`. Confirm that the
+   selected inverter is yours and the bridge address is correct. The
+   [configuration guide](docs/setup.md#environment-variables) explains each
+   setting. Both files are private and ignored by Git.
 
 5. Validate without touching the radio:
 

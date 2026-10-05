@@ -2,8 +2,8 @@
 
 Run discovery after preparing the SMLIGHT bridge and before configuring the
 collector. Start with the bridge's LAN address; the scan gathers evidence for
-the inverter's channel, PAN IDs, and radio identities. Review the resulting
-report before copying values into `.env`.
+the inverter's channel, PAN IDs, and radio identities. Add `--write-env .env`
+to generate the collector configuration, then review it before starting collection.
 
 `tools/discover_radio.py` gathers candidate network settings from radio traffic.
 It does not load installation settings, import configured device identities, pair
@@ -17,8 +17,8 @@ of the device's model or ownership. Confirm the equipment before using the value
 ## Gather a new capture
 
 Prepare the bridge with the supported RCP firmware and install the repository's
-Python dependencies. A site configuration is not required, even if a partially
-edited `.env` already exists.
+Python dependencies. The tool gathers settings directly from radio traffic.
+If `.env` already exists, use `--write-env .env.review` to save a separate file.
 
 You can scan with the same SMLIGHT you will later use for the replacement.
 First stop any program connected to that SMLIGHT, including this project's collector, ZHA,
@@ -37,7 +37,8 @@ listen; power it off before starting the replacement collector.
 uv run python tools/discover_radio.py \
   --host YOUR_BRIDGE_HOST \
   --exclusive-radio \
-  --output captures/discovery.json
+  --output captures/discovery.json \
+  --write-env .env
 ```
 
 By default it listens on channels 11 through 26 for 20 seconds each, about five
@@ -52,6 +53,8 @@ channel visit. It does not join a network or change inverter settings. A router
 that still considers itself joined may answer; a device that has already left
 may provide no useful response.
 
+With `--write-env .env`, a complete, consistent result also produces a private
+`.env` file containing the bridge address, port, and discovered radio settings.
 The tool writes the report plus capture files alongside it:
 
 - `discovery.json`: settings, unknowns, conflicts, and supporting frame references.
@@ -131,74 +134,64 @@ The report deliberately makes that distinction.
 
 ## Apply reviewed values
 
-Open `captures/discovery.json` in a local editor. Under `networks`, find the
-network containing your inverter, then select its entry in `inverter_candidates`.
-Do not assume the first network or candidate is yours: nearby equipment can
-appear in a capture. Check the supported inverter model and, when available,
-compare the radio EUI with its label or known radio configuration.
+Add `--write-env .env` to discovery, as in the command above. The tool writes a
+complete environment file when there is exactly one matching inverter/network
+candidate. It uses observed values from that inverter and its network, checks
+for conflicts, and requires unsecured application traffic with stack profile `0`.
+Unknown values are never filled with defaults. Existing files are never overwritten.
 
-Start with that candidate's `inverter_only` object. Each setting has a `status`
-and a `value`. For example, this **fictional** observation:
+Review `.env` and the selected inverter in `captures/discovery.json` before
+starting the collector. Nearby equipment can appear in a capture; confirm the
+supported inverter model and, when available, compare the radio EUI with its
+label or known radio configuration. Export verifies the evidence and settings,
+not equipment ownership or whether the inverter will connect.
 
-```json
-{
-  "pan_id": {"status": "observed", "value": "0x1234", "evidence": []}
-}
-```
-
-means the corresponding `.env` entry is `SOLAR_PAN_ID=0x1234`. Copy only the
-value, not the surrounding evidence object. Use your report's values, not this
-example. Real observations include the supporting frames in `evidence`.
-
-| Environment variable | Where to get the value |
-| --- | --- |
-| `SOLAR_RADIO_HOST` | Your bridge hostname or IP, as used with `--host` |
-| `SOLAR_RADIO_PORT` | Your bridge's TCP port, normally `6638` |
-| `SOLAR_RADIO_CHANNEL` | Selected candidate's `inverter_only.channel.value` |
-| `SOLAR_PAN_ID` | Selected candidate's `inverter_only.pan_id.value` |
-| `SOLAR_EXTENDED_PAN_ID` | Selected candidate's `inverter_only.extended_pan_id.value` |
-| `SOLAR_INVERTER_EUI` | Selected candidate's `inverter_only.inverter_eui.value` |
-| `SOLAR_COLLECTOR_EUI` | Selected candidate's `inverter_only.collector_eui.value` |
-
-The full path starts at `networks`, then the chosen `inverter_candidates` entry.
-Use a radio field only when its status is `observed` and its value is non-null.
-If an inverter-only field is unknown, the same candidate's `whole_network` view
-may contain an observed value from other traffic on that network. Review its
-evidence before using it. Conflicts or disagreements between the views require
-investigation; do not silently choose one value or fill in a guessed default.
-
-The collector EUI is the identity the inverter expects, even when the original
-box is unavailable. Do not substitute your new bridge's factory EUI. The inverter
-EUI is its permanent 64-bit radio address, not a changing 16-bit short address or
-the inverter's equipment serial number. Normally omit `SOLAR_INITIAL_ADDRESS`; the
-collector learns the inverter's current short address at runtime.
-
-Confirm compatibility as well as identity. The selected network's
-`network_fields.stack_profile` should be observed as `0`, and `security` should
-show unsecured application traffic. Secured traffic or an unknown/conflicting
-stack profile needs further inspection before using this implementation. A
-complete set of addresses alone does not establish protocol compatibility.
-
-Create `.env` in the repository directory:
+If export fails, the JSON report and captured frames remain available and the
+command exits with an error. Resolve the reported issue before retrying. When
+multiple inverter candidates are present, select one using `--inverter-eui`
+with its `inverter_eui` value from the report. You can export from the saved
+frames without another scan:
 
 ```sh
-cp config.example.env .env
+uv run python tools/discover_radio.py \
+  --input captures/discovery-frames.json \
+  --bridge-host YOUR_BRIDGE_HOST \
+  --inverter-eui YOUR_INVERTER_EUI \
+  --output captures/selected.json \
+  --write-env .env
 ```
 
-Fill it in using the mapping above. Numeric values accept decimal or `0x`-prefixed
-hexadecimal strings. EUIs are 16 hexadecimal digits without colons. Preserve
-leading zeroes and use the report's display order; do not reverse the bytes.
-The script never applies a report automatically.
+`--bridge-host` supplies the address for the generated file; this command opens
+no radio connection. `--port` sets the bridge port and defaults to `6638`.
+Omit `--inverter-eui` when the capture contains only one candidate. If the same
+EUI appears on multiple networks, analyze a capture of the intended network
+rather than selecting by EUI alone. Use new output paths for repeated attempts,
+such as `--output captures/selected-2.json --write-env .env.review`.
 
-Then validate without opening a radio connection:
+The generated variables are:
+
+| Environment variable | Source |
+| --- | --- |
+| `SOLAR_RADIO_HOST` | `--host` for a live scan, or `--bridge-host` for saved captures |
+| `SOLAR_RADIO_PORT` | `--port`, default `6638` |
+| `SOLAR_RADIO_CHANNEL` | Observed channel |
+| `SOLAR_PAN_ID` | Observed 16-bit operating PAN ID |
+| `SOLAR_EXTENDED_PAN_ID` | Observed extended PAN ID |
+| `SOLAR_INVERTER_EUI` | Selected inverter's radio identity |
+| `SOLAR_COLLECTOR_EUI` | Collector identity expected by that inverter |
+
+The export preserves EUI leading zeroes and byte order. The collector EUI comes
+from the inverter's network, even when the original box is unavailable.
+`SOLAR_INITIAL_ADDRESS` is omitted so the collector can learn the current short
+address at runtime.
+
+Validate the reviewed file without opening a radio connection:
 
 ```sh
 uv run --env-file .env python -m collector.config
 ```
 
-Validation checks the settings' format, not whether the inverter will connect.
 The [environment setup](setup.md#environment-variables) covers all variables.
-
 Once capture has finished, power off the original collector if you have one,
 give the replacement exclusive access to the bridge, and follow
 [Start and verify](setup.md#start-and-verify). Keep the report, captures, and
