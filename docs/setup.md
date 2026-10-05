@@ -3,7 +3,8 @@
 This guide covers a single legacy Power-One/Digi installation using an existing
 collector identity. It assumes the inverter already contains a working radio.
 All addresses in the tests are fictional. The repository contains no reusable
-installation identity and does not discover one automatically.
+installation identity. The [discovery tool](discovery.md) can gather candidate
+settings from traffic; review its evidence before configuring the collector.
 
 ## Prepare the bridge
 
@@ -43,8 +44,9 @@ XBee `ID` is the **configured** extended PAN setting. `ID=0` means automatic
 selection; it does not mean the operating extended PAN is zero. Record the
 operating value. Channel displays may be hexadecimal: `0x14` is decimal 20.
 
-Obtain identities from accessible radio configuration or a capture made while
-the original collector is operating. Beacons contain the extended PAN; IEEE
+Start with the [discovery tool](discovery.md) if the addresses are unknown. It
+can learn from inverter-originated traffic and also analyze a capture of a working
+original collector. Accessible radio configuration is another source. Beacons contain the extended PAN; IEEE
 addresses appear in suitable network headers and device announcements. The
 collector's short address is `0x0000`. The inverter's short address may change
 and is learned at runtime.
@@ -76,10 +78,11 @@ that startup replies are absent. Use an independent receiver with verified
 unicast capture support for a complete application exchange. Production addressed
 reception does not require a separate sniffer or modified RCP firmware.
 
-If the original collector is unavailable, the inverter's own traffic or accessible
-configuration may reveal enough information. That recovery workflow is not
-implemented or validated here. Fresh pairing under a new collector EUI is also
-untested. Treat those as further development, not a promised setup path.
+If the original collector is unavailable, the inverter's own traffic may reveal
+the needed identities and network settings. The discovery tool has recovered all
+five radio settings from inverter-originated traffic on an operating replacement
+network. Discovery from a fully unjoined inverter and fresh pairing under a new
+collector EUI remain untested. See the [evidence limits](discovery.md).
 
 ## Configure the collector
 

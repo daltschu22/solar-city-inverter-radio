@@ -167,10 +167,12 @@ installation, not a claim of universal compatibility or established long-term
 reliability. The standalone export has offline tests and still needs independent
 hardware reproductions.
 
-The open commissioning question is what happens when the original collector is
-missing and its identity is unknown. It may be possible to recover the required
-settings from the inverter or teach it a new coordinator identity. Neither path
-is a completed feature of this release.
+The included discovery tool can recover candidate settings from inverter traffic
+and explains the evidence for each value. On an operating replacement network,
+it recovered all five required radio settings from inverter-originated frames.
+That still leaves an open commissioning question: an inverter that has already
+left its network may expose less information. Recovering from that state, or
+teaching it a new coordinator identity, remains unverified.
 
 There is useful prior work. [solarcity_sniff](https://github.com/hufman/solarcity_sniff)
 records and decodes SolarCity traffic. Other communities have built replacement

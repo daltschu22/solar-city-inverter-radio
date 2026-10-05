@@ -20,7 +20,6 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from server import build_modbus_transactions, decode_ieee802154_frame
-from config import CONFIG
 
 
 def decode_record(packet, metadata, sweep, observed_at):
@@ -52,7 +51,7 @@ def summarize(frames):
     counts = Counter((f["channel"], f.get("source_pan_id", "none"), f["type"]) for f in frames)
     return {
         "frames": len(frames),
-        "solar_pan_frames": sum(f.get("source_pan_id") == f"0x{CONFIG.pan_id:04x}" for f in valid),
+        "digi_serial_frames": sum(f.get("application_protocol") == "digi-transparent" for f in valid),
         "by_channel_pan_type": [
             {"channel": c, "pan": p, "type": t, "count": n}
             for (c, p, t), n in sorted(counts.items())

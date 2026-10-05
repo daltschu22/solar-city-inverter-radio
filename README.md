@@ -77,6 +77,7 @@ need to return to operation before data appears.
 
 ## Documentation
 
+- [Discover radio settings](docs/discovery.md): gather evidence without a preconfigured inverter address.
 - [Reproduce the integration](docs/setup.md): hardware, settings, startup, validation, and containers.
 - [Radio and measurement protocol](docs/protocol.md): coordinator exchanges, startup reply, wire format, and register reads.
 - [Article draft](docs/article.md): a publishable explanation focused on the useful implementation details.
