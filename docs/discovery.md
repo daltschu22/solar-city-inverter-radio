@@ -1,7 +1,7 @@
 # Discover radio settings without the original collector
 
 `tools/discover_radio.py` gathers candidate network settings from radio traffic.
-It does not read `radio.local.json`, import configured device identities, pair
+It does not load installation settings, import configured device identities, pair
 with a device, or start the replacement collector. Unknown settings remain unknown.
 
 The tool can analyze saved captures or collect new traffic using an exclusively
@@ -13,7 +13,7 @@ of the device's model or ownership. Confirm the equipment before using the value
 
 Prepare the bridge with the supported RCP firmware and install the repository's
 Python dependencies. A site configuration is not required, even if a partially
-edited `radio.local.json` already exists.
+edited `.env` already exists.
 
 You can scan with the same SMLIGHT you will later use for the replacement.
 First stop any program connected to that SMLIGHT, including this project's collector, ZHA,
@@ -141,19 +141,19 @@ and a `value`. For example, this **fictional** observation:
 }
 ```
 
-means the corresponding config entry is `"pan_id": "0x1234"`. Copy only the
+means the corresponding `.env` entry is `SOLAR_PAN_ID=0x1234`. Copy only the
 value, not the surrounding evidence object. Use your report's values, not this
 example. Real observations include the supporting frames in `evidence`.
 
-| JSON field | Environment variable | Where to get the value |
-| --- | --- | --- |
-| `host` | `SOLAR_RADIO_HOST` | Your bridge hostname or IP, as used with `--host` |
-| `port` | `SOLAR_RADIO_PORT` | Your bridge's TCP port, normally `6638` |
-| `channel` | `SOLAR_RADIO_CHANNEL` | Selected candidate's `inverter_only.channel.value` |
-| `pan_id` | `SOLAR_PAN_ID` | Selected candidate's `inverter_only.pan_id.value` |
-| `extended_pan_id` | `SOLAR_EXTENDED_PAN_ID` | Selected candidate's `inverter_only.extended_pan_id.value` |
-| `inverter_eui` | `SOLAR_INVERTER_EUI` | Selected candidate's `inverter_only.inverter_eui.value` |
-| `collector_eui` | `SOLAR_COLLECTOR_EUI` | Selected candidate's `inverter_only.collector_eui.value` |
+| Environment variable | Where to get the value |
+| --- | --- |
+| `SOLAR_RADIO_HOST` | Your bridge hostname or IP, as used with `--host` |
+| `SOLAR_RADIO_PORT` | Your bridge's TCP port, normally `6638` |
+| `SOLAR_RADIO_CHANNEL` | Selected candidate's `inverter_only.channel.value` |
+| `SOLAR_PAN_ID` | Selected candidate's `inverter_only.pan_id.value` |
+| `SOLAR_EXTENDED_PAN_ID` | Selected candidate's `inverter_only.extended_pan_id.value` |
+| `SOLAR_INVERTER_EUI` | Selected candidate's `inverter_only.inverter_eui.value` |
+| `SOLAR_COLLECTOR_EUI` | Selected candidate's `inverter_only.collector_eui.value` |
 
 The full path starts at `networks`, then the chosen `inverter_candidates` entry.
 Use a radio field only when its status is `observed` and its value is non-null.
@@ -165,7 +165,7 @@ investigation; do not silently choose one value or fill in a guessed default.
 The collector EUI is the identity the inverter expects, even when the original
 box is unavailable. Do not substitute your new bridge's factory EUI. The inverter
 EUI is its permanent 64-bit radio address, not a changing 16-bit short address or
-the inverter's equipment serial number. Normally omit `initial_address`; the
+the inverter's equipment serial number. Normally omit `SOLAR_INITIAL_ADDRESS`; the
 collector learns the inverter's current short address at runtime.
 
 Confirm compatibility as well as identity. The selected network's
@@ -174,38 +174,30 @@ show unsecured application traffic. Secured traffic or an unknown/conflicting
 stack profile needs further inspection before using this implementation. A
 complete set of addresses alone does not establish protocol compatibility.
 
-Create the config in the repository directory:
+Create `.env` in the repository directory:
 
 ```sh
-cp config.example.json radio.local.json
+cp config.example.env .env
 ```
 
-Edit it using the mapping above. Preserve JSON types: `channel` and `port` are
-integers; PAN IDs are quoted `0x`-prefixed hexadecimal strings; EUIs are quoted
-16-digit hexadecimal strings without colons. Use the report's display order;
-do not reverse the bytes. The script never applies a report automatically.
+Fill it in using the mapping above. Numeric values accept decimal or `0x`-prefixed
+hexadecimal strings. EUIs are 16 hexadecimal digits without colons. Preserve
+leading zeroes and use the report's display order; do not reverse the bytes.
+The script never applies a report automatically.
 
-Then validate the completed file without opening a radio connection:
+Then validate without opening a radio connection:
 
 ```sh
-uv run python -m collector.config
+uv run --env-file .env python -m collector.config
 ```
 
-By default the app reads `radio.local.json` from the working directory. If you
-use `SOLAR_CONFIG`, set it to the absolute path of the file you intend to validate
-and run. Config validation checks the file's format, not whether the inverter
-will connect.
-
-For an environment-only setup, copy `config.example.env` to `.env` and use the
-same report-to-setting mapping above. Load the values as described in the
-[environment setup](setup.md#environment-variables), then validate with the same
-`uv run python -m collector.config` command. Environment values override JSON fields when both are used.
+Validation checks the settings' format, not whether the inverter will connect.
+The [environment setup](setup.md#environment-variables) covers all variables.
 
 Once capture has finished, power off the original collector if you have one,
 give the replacement exclusive access to the bridge, and follow
 [Start and verify](setup.md#start-and-verify). Keep the report, captures, and
-`radio.local.json` and `.env` private; the repository ignores them under the paths
-above.
+`.env` private; the repository ignores them under the paths above.
 
 ## If the report is incomplete
 

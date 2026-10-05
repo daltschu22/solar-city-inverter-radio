@@ -11,7 +11,7 @@ If Home Assistant runs on another computer or in a container, bind the collector
 API to a reachable interface on your trusted network:
 
 ```sh
-SOLAR_API_BIND=0.0.0.0 uv run python -m collector
+SOLAR_API_BIND=0.0.0.0 uv run --env-file .env python -m collector
 ```
 
 For a containerized collector, also publish port `8766` on the intended host

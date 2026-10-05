@@ -112,13 +112,10 @@ httpd.serve_forever.assert_called_once()
 httpd.server_close.assert_called_once()
 assert not {'config', 'collector', 'history', 'smlight_collector', 'spinel', 'radio_protocol'} & sys.modules.keys()
 '''
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "bad.local.json"
-            path.write_text("invalid JSON")
-            subprocess.run([sys.executable, "-S", "-c", code], check=True,
-                           cwd=Path(__file__).resolve().parents[1],
-                           env={**os.environ, "SOLAR_CONFIG": str(path),
-                                "SOLAR_COLLECTOR_URL": "http://127.0.0.1:8766"})
+        subprocess.run([sys.executable, "-S", "-c", code], check=True,
+                       cwd=Path(__file__).resolve().parents[1],
+                       env={**os.environ, "SOLAR_RADIO_CHANNEL": "invalid",
+                            "SOLAR_COLLECTOR_URL": "http://127.0.0.1:8766"})
 
     def test_upstream_url_validation(self):
         self.assertEqual(server.collector_url("http://collector.example.invalid:8766/"),

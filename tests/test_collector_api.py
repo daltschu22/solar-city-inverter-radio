@@ -67,8 +67,8 @@ class CollectorApiTests(unittest.TestCase):
     def test_startup_has_no_legacy_or_sample_fallback(self):
         with patch.object(collector, "smlight_collector", None):
             self.assertEqual(self.request("GET", "/api/live")[0], 503)
-        with patch("collector.config.require_configured", side_effect=ValueError("Create radio.local.json")):
-            with self.assertRaisesRegex(SystemExit, "radio.local.json"):
+        with patch("collector.config.require_configured", side_effect=ValueError("Set radio environment variables")):
+            with self.assertRaisesRegex(SystemExit, "radio environment variables"):
                 collector.main()
 
     def test_history_includes_configured_poll_interval_for_chart_gaps(self):
@@ -80,7 +80,7 @@ class CollectorApiTests(unittest.TestCase):
                 self.assertEqual(json.loads(body)["poll_interval_seconds"], interval)
 
     def test_collector_api_never_serves_dashboard_or_local_files(self):
-        for path in ("/", "/index.html", "/app.js", "/radio.local.json"):
+        for path in ("/", "/index.html", "/app.js", "/.env"):
             with self.subTest(path=path):
                 self.assertEqual(self.request("GET", path)[0], 404)
 
@@ -102,7 +102,7 @@ class CollectorApiTests(unittest.TestCase):
         import sys
         subprocess.run([sys.executable, "-c", "import sys; import collector.api, tools.discover_radio, collector.smlight_collector; assert 'dashboard' not in sys.modules"],
                        check=True, cwd=Path(__file__).resolve().parents[1],
-                       env={**os.environ, "SOLAR_CONFIG": str(Path(__file__).with_name("config.synthetic.json"))})
+                       env=os.environ.copy())
 
     def test_default_database_location_survives_package_move(self):
         import os

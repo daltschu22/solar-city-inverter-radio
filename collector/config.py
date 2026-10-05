@@ -1,9 +1,7 @@
 """Installation settings. Importing offline decoders never opens a radio socket."""
 
 from dataclasses import dataclass
-import json
 import os
-from pathlib import Path
 import re
 
 
@@ -33,31 +31,18 @@ ENV_FIELDS = {
 }
 
 
-def load_config(path=None):
-    explicit = path is not None or "SOLAR_CONFIG" in os.environ
-    path = Path(path if path is not None else os.environ.get("SOLAR_CONFIG", "radio.local.json"))
-    file_exists = path.exists()
-    data = {}
-    if file_exists:
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
-            raise ValueError("Cannot read radio configuration JSON") from exc
-    elif explicit:
-        raise ValueError("SOLAR_CONFIG file does not exist")
-
+def load_config():
+    if "SOLAR_CONFIG" in os.environ:
+        raise ValueError("SOLAR_CONFIG is no longer supported; migrate to environment variables and unset it; see docs/setup.md#migrating-from-json")
     required = {"host", "channel", "pan_id", "extended_pan_id", "collector_eui", "inverter_eui"}
-    optional = {"port", "initial_address"}
-    if not isinstance(data, dict) or data.keys() - required - optional:
-        raise ValueError("Radio configuration has missing or unknown fields; see config.example.json")
-    overrides = {key: os.environ[name] for key, name in ENV_FIELDS.items() if name in os.environ}
-    if not file_exists and not overrides:
+    data = {key: os.environ[name] for key, name in ENV_FIELDS.items() if name in os.environ}
+    if not data:
         return RadioConfig()
-    data.update(overrides)
     if required - data.keys():
-        raise ValueError("Radio configuration has missing fields; see config.example.json or config.example.env")
-    if not isinstance(data["host"], str) or not data["host"].strip():
-        raise ValueError("Radio host is required")
+        missing = ", ".join(sorted(ENV_FIELDS[key] for key in required - data.keys()))
+        raise ValueError(f"Missing radio environment variables: {missing}; see config.example.env")
+    if not data["host"].strip():
+        raise ValueError("SOLAR_RADIO_HOST is required")
 
     def number(key, default, minimum, maximum):
         value = data.get(key, default)
@@ -66,17 +51,17 @@ def load_config(path=None):
                 raise ValueError()
             value = int(value, 0) if isinstance(value, str) else value
         except ValueError as exc:
-            raise ValueError(f"{key} must be an integer or a 0x-prefixed hex string") from exc
+            raise ValueError(f"{ENV_FIELDS[key]} must be an integer or a 0x-prefixed hex string") from exc
         if not minimum <= value <= maximum:
-            raise ValueError(f"{key} is outside its valid range")
+            raise ValueError(f"{ENV_FIELDS[key]} is outside its valid range")
         return value
 
     def eui(key):
         value = data[key]
         if not isinstance(value, str) or not re.fullmatch(r"[0-9a-fA-F]{16}", value):
-            raise ValueError(f"{key} must contain exactly 16 hexadecimal digits")
+            raise ValueError(f"{ENV_FIELDS[key]} must contain exactly 16 hexadecimal digits")
         if int(value, 16) in (0, 0xFFFFFFFFFFFFFFFF) or int(value[:2], 16) & 1:
-            raise ValueError(f"{key} must be a unicast device identity")
+            raise ValueError(f"{ENV_FIELDS[key]} must be a unicast device identity")
         return value.lower()
 
     collector, inverter = eui("collector_eui"), eui("inverter_eui")
@@ -98,7 +83,7 @@ CONFIG = load_config()
 
 def require_configured():
     if not CONFIG.configured:
-        raise ValueError("Set the radio environment variables or create radio.local.json; see docs/setup.md")
+        raise ValueError("Set the radio environment variables; load .env with uv run --env-file .env or Docker --env-file .env; see docs/setup.md")
     return CONFIG
 
 

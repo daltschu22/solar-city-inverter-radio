@@ -19,7 +19,7 @@ start the dashboard in that same container.
 
 | Component | Command / interface | Role |
 | --- | --- | --- |
-| Collector | `uv run python -m collector`, port `8766` | Owns the SMLIGHT connection, gathers readings, saves history, serves JSON |
+| Collector | `uv run --env-file .env python -m collector`, port `8766` | Owns the SMLIGHT connection, gathers readings, saves history, serves JSON |
 | Optional dashboard | `uv run python -m dashboard`, port `8765` | Reads the collector API and displays the readings |
 | Collector with dashboard | Set `SOLAR_DASHBOARD=true` in the container | Adds the dashboard on port `8765`; the collector API stays on `8766` |
 | Home Assistant | [REST sensor example](docs/home-assistant.md) | Reads the collector API directly; the dashboard is optional |
@@ -120,32 +120,28 @@ Run one collector per SMLIGHT. Other consumers share its API.
    [If the report is incomplete](docs/discovery.md#if-the-report-is-incomplete)
    before continuing. Discovery may be incomplete, especially without a working
    collector; leave missing values unresolved rather than guessing them.
-4. Copy the template, then edit `radio.local.json`:
+4. Copy the template, then edit `.env`:
 
    ```sh
-   cp config.example.json radio.local.json
+   cp config.example.env .env
    ```
 
    Enter your SMLIGHT address and the five reviewed radio settings. The
    [field-by-field mapping](docs/discovery.md#apply-reviewed-values) shows exactly
-   which report value goes into each config field. Required fields are blank or
-   placeholders; use your own settings. Capture reports and local configs are
-   ignored by Git.
+   which report value goes into each environment variable. Required values are
+   blank; use your own settings. `.env` and capture reports are ignored by Git.
 
-   You can also supply all settings through environment variables, without a
-   JSON file, or override selected JSON fields. Copy `config.example.env` to
-   `.env` and follow the [environment setup](docs/setup.md#environment-variables).
 5. Validate without touching the radio:
 
    ```sh
-   uv run python -m collector.config
+   uv run --env-file .env python -m collector.config
    ```
 
 6. Power off the original collector, if present, and stop any other program
    connected to the SMLIGHT bridge. Then start the replacement:
 
    ```sh
-   uv run python -m collector
+   uv run --env-file .env python -m collector
    ```
 
 Read the JSON at <http://127.0.0.1:8766/api/live> or use:
@@ -188,11 +184,9 @@ The [copyable configuration](docs/home-assistant.md) provides power in W and
 cumulative energy in kWh for the Energy dashboard, including availability checks
 for stale or missing readings. This works with the dashboard process stopped.
 
-**Upgrading from the flat layout:** run `uv run python -m collector` and, optionally,
-`uv run python -m dashboard` from the repository root. Update services that launch the
-old top-level scripts. Existing `radio.local.json`, environment settings, and
-SQLite data need no migration. Rebuild containers to use the new layout;
-`SOLAR_DASHBOARD=true` still enables both programs in one container.
+**Upgrading from JSON configuration:** follow the
+[migration guide](docs/setup.md#migrating-from-json) to move your existing values
+into `.env`. Existing SQLite history needs no migration.
 
 ## Documentation
 

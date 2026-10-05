@@ -50,19 +50,19 @@ in that directory; the source folders do not contain installation settings.
    The collector EUI must be the identity the inverter expects, not the new
    bridge's factory EUI. Recovery from a fully unjoined inverter with unknown
    settings is unverified; explain missing evidence instead of promising pairing.
-6. Save installation settings in ignored `.env` or `radio.local.json`. Preserve
-   existing settings; do not overwrite them with a template. Environment
-   variables override JSON. Pass `--env-file .env` to `uv run` to load reviewed
-   settings, as shown in [setup](docs/setup.md#environment-variables).
-   If `SOLAR_CONFIG` is set, its file must exist. Validate using
-   `uv run python -m collector.config`; this opens no radio connection.
+6. Save installation settings in ignored `.env` or the service environment.
+   Preserve existing settings; do not overwrite them with a template. Use the
+   [migration guide](docs/setup.md#migrating-from-json) for older JSON installations.
+   Pass `--env-file .env` to `uv run` to load reviewed settings, as shown in
+   [setup](docs/setup.md#environment-variables). Validate using
+   `uv run --env-file .env python -m collector.config`; this opens no radio connection.
 7. Before starting collection, establish that the original SolarCity/Tesla
    collector is powered off and this process has exclusive use of the bridge.
    Act on existing user authorization and known state; ask when a required
    physical step or service ownership is unknown. Do not change inverter
    operating settings or flash firmware as an incidental setup action.
 8. Follow the [container commands](docs/setup.md#run-the-collector-in-a-container)
-   or run `uv run python -m collector`. Build with
+   or run `uv run --env-file .env python -m collector`. Build with
    `docker build -t solar-city-inverter-radio .`. Preserve the existing data
    volume on upgrades. Use the user's chosen service manager for unattended
    operation and document the start, stop, and update commands.
@@ -98,7 +98,7 @@ authenticated proxy; the application has no built-in authentication.
   for offline Python tests, JavaScript tests, and publication checks.
 - Do not use live inverter access as a routine test. Build the image after
   packaging changes and use synthetic configuration with networking disabled
-  for container checks. Never deploy `tests/config.synthetic.json` to a live
+  for container checks. Never deploy `tests/radio.synthetic.env` to a live
   collector.
 - Review tracked and untracked changes before staging. The publication checker
   scans tracked files, so also run it after staging new files. Follow the user's

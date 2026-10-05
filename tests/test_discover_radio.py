@@ -107,12 +107,9 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(analyze([dict(startup(), raw=raw.hex())])['networks'][0]['inverter_candidates'], [])
 
     def test_capture_import_does_not_require_private_config(self):
-        with tempfile.TemporaryDirectory() as directory:
-            config = Path(directory) / 'broken.local.json'
-            config.write_text('not valid json')
-            subprocess.run([sys.executable, '-c',
-                            'import tools.smlight_capture; import tools.discover_radio'], cwd=ROOT,
-                           env={**os.environ, 'SOLAR_CONFIG': str(config)}, check=True)
+        subprocess.run([sys.executable, '-c',
+                        'import tools.smlight_capture; import tools.discover_radio'], cwd=ROOT,
+                       env={**os.environ, 'SOLAR_RADIO_CHANNEL': 'invalid'}, check=True)
 
     def test_cli_is_offline_ignores_config_and_preserves_existing_output(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -121,7 +118,7 @@ class DiscoveryTests(unittest.TestCase):
             path.write_text(json.dumps([startup(), beacon()]))
             args = [sys.executable, str(ROOT / 'tools/discover_radio.py'),
                     '--input', str(path), '--output', str(output)]
-            env = {**os.environ, 'SOLAR_CONFIG': str(Path(directory) / 'missing.local.json')}
+            env = {**os.environ, 'SOLAR_RADIO_CHANNEL': 'invalid'}
             with patch('socket.create_connection', side_effect=AssertionError('No sockets allowed')):
                 self.assertEqual(candidate(analyze(load_records(path)))['inverter_eui'], INVERTER)
             subprocess.run(args, cwd=directory, env=env, check=True, capture_output=True)

@@ -2,7 +2,7 @@
 
 The dashboard is a separate viewer for the [collector API](api.md). The collector
 must be running to provide readings. It owns the radio and database; the dashboard
-needs only the API URL and Python 3.12 or newer. It does not load `radio.local.json`
+needs only the API URL and Python 3.12 or newer. It does not load radio settings
 or require the radio's Python dependencies.
 
 ## On the same computer
@@ -27,7 +27,7 @@ Allow the collector API to listen on a trusted network interface. For example,
 on the collector computer:
 
 ```sh
-SOLAR_API_BIND=0.0.0.0 uv run python -m collector
+SOLAR_API_BIND=0.0.0.0 uv run --env-file .env python -m collector
 ```
 
 On the dashboard computer, set the API URL to the **collector computer**, using
@@ -91,8 +91,7 @@ docker run --rm --name solar-city-combined --stop-timeout 30 \
 ```
 
 Open <http://127.0.0.1:8765>. Existing installations should reuse their history
-volume. To use JSON instead of `.env`, replace `--env-file .env` with the
-read-only config mount from the [collector setup](setup.md#run-the-collector-in-a-container).
+volume and use the same `.env` as the collector-only setup.
 
 The container starts two Python processes:
 
