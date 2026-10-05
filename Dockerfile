@@ -1,7 +1,9 @@
 FROM docker.io/library/python:3.12-slim
 WORKDIR /app
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir uv==0.12.23
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --locked --no-dev --no-cache --python /usr/local/bin/python
+ENV PATH="/app/.venv/bin:$PATH"
 COPY collector/ ./collector/
 COPY dashboard/ ./dashboard/
 COPY runtime/ ./runtime/

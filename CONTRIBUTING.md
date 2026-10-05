@@ -1,8 +1,9 @@
 # Contributing
 
-Use Python 3.12 or newer and Node.js 20 or newer. Install `requirements.txt` in a
-virtual environment and run `PATH="$PWD/.venv/bin:$PATH" ./check` before submitting
-changes. Tests must run without hardware, network access to a radio, or local site
+Install uv and Node.js 20 or newer. Run `uv sync --locked` and `./check` before
+submitting changes. uv manages the Python environment; `.python-version` selects
+3.12, and CI also tests 3.14. Dependency changes belong in `pyproject.toml` and
+must include the updated `uv.lock`. Tests must run without hardware, network access to a radio, or local site
 configuration. `check` selects the synthetic test configuration explicitly.
 
 The intended scope is one known Power-One/Digi inverter on an unsecured legacy

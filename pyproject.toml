@@ -1,0 +1,22 @@
+[project]
+name = "solar-city-inverter-radio"
+version = "0.1.0"
+description = "Local SolarCity inverter collection through a SMLIGHT radio, with an optional dashboard"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+    "astral==3.2",
+    "pyserial==3.5",
+    "pyspinel @ https://github.com/openthread/pyspinel/archive/5e0627abd04b7d2c7ca47c6615bd14b31227eb4d.zip",
+]
+
+[project.optional-dependencies]
+capture = ["scapy==2.7.0"]
+
+[project.urls]
+Repository = "https://github.com/daltschu22/solar-city-inverter-radio"
+
+[tool.uv]
+# Run the application from its checkout; no wheel installation is needed.
+package = false

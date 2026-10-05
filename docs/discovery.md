@@ -29,7 +29,7 @@ during the scan. A working original SolarCity collector can remain on while you
 listen; power it off before starting the replacement collector.
 
 ```sh
-.venv/bin/python tools/discover_radio.py \
+uv run python tools/discover_radio.py \
   --host YOUR_BRIDGE_HOST \
   --exclusive-radio \
   --output captures/discovery.json
@@ -40,8 +40,9 @@ minutes total. It does not transmit. Use `--channels 14 --seconds 120`, for
 example, to spend two minutes on a known channel. The number is an example, not
 a default network setting for every installation.
 
-To solicit beacon responses, optionally install `scapy==2.7.0` and add
-`--beacon-request`. That sends one standard IEEE 802.15.4 beacon request per
+To solicit beacon responses, run with `uv run --extra capture python` and add
+`--beacon-request` to the discovery command. The extra installs the pinned Scapy
+dependency. This sends one standard IEEE 802.15.4 beacon request per
 channel visit. It does not join a network or change inverter settings. A router
 that still considers itself joined may answer; a device that has already left
 may provide no useful response.
@@ -68,7 +69,7 @@ capture support may be needed for a complete result.
 The offline path opens no network connection:
 
 ```sh
-.venv/bin/python tools/discover_radio.py \
+uv run python tools/discover_radio.py \
   --input captures/reference.json \
   --output captures/reference-discovery.json
 ```
@@ -187,7 +188,7 @@ do not reverse the bytes. The script never applies a report automatically.
 Then validate the completed file without opening a radio connection:
 
 ```sh
-.venv/bin/python -m collector.config
+uv run python -m collector.config
 ```
 
 By default the app reads `radio.local.json` from the working directory. If you
@@ -196,9 +197,9 @@ and run. Config validation checks the file's format, not whether the inverter
 will connect.
 
 For an environment-only setup, copy `config.example.env` to `.env` and use the
-same report-to-setting mapping above. Export the values as described in the
+same report-to-setting mapping above. Load the values as described in the
 [environment setup](setup.md#environment-variables), then validate with the same
-`python -m collector.config` command. Environment values override JSON fields when both are used.
+`uv run python -m collector.config` command. Environment values override JSON fields when both are used.
 
 Once capture has finished, power off the original collector if you have one,
 give the replacement exclusive access to the bridge, and follow

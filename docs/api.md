@@ -1,6 +1,6 @@
 # Collector API
 
-Run `python -m collector` from the repository root to maintain the radio network,
+Run `uv run python -m collector` from the repository root to maintain the radio network,
 collect readings, and save them to SQLite. Its read-only JSON API defaults to
 `http://127.0.0.1:8766`. You can use
 it without starting the dashboard. HTTP requests read saved data and collector

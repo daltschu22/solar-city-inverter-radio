@@ -147,15 +147,15 @@ The main steps are:
    to gather your channel, operating PAN IDs, expected collector EUI, and inverter EUI.
    Existing captures or accessible radio configuration are also useful sources.
 3. Review the evidence, put the observed values in `radio.local.json`, and validate
-   the file with `python -m collector.config`.
+   the file with `uv run python -m collector.config`.
 4. Power off the original collector, if present, and give the Python collector
    exclusive access to the radio bridge after capture has finished.
 5. Validate fresh readings, then observe startup and overnight recovery.
 
-From the repository root, run `python -m collector` for collection and the JSON
+From the repository root, run `uv run python -m collector` for collection and the JSON
 API on port `8766`. That is
 a complete setup for anyone who wants to consume the data themselves. The
-included dashboard runs separately with `python -m dashboard` on port `8765` and
+included dashboard runs separately with `uv run python -m dashboard` on port `8765` and
 reads the collector API. Home Assistant can use the same API through its REST
 sensors; the repository includes a
 [power and energy example](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/home-assistant.md).

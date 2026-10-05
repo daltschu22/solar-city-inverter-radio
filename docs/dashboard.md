@@ -11,12 +11,15 @@ Finish [part 1: collection](setup.md) and leave the collector running. In anothe
 terminal, from the repository directory:
 
 ```sh
-python3 -m dashboard
+uv run python -m dashboard
 ```
 
 Open <http://127.0.0.1:8765>. The dashboard proxies its read requests to
 `http://127.0.0.1:8766`. You can close the browser or stop/restart this process
 while the collector keeps gathering data.
+
+For a dashboard-only host with Python 3.12+ already installed, `python3 -m dashboard`
+also works without uv or any third-party Python packages.
 
 ## On a different computer
 
@@ -24,7 +27,7 @@ Allow the collector API to listen on a trusted network interface. For example,
 on the collector computer:
 
 ```sh
-SOLAR_API_BIND=0.0.0.0 .venv/bin/python -m collector
+SOLAR_API_BIND=0.0.0.0 uv run python -m collector
 ```
 
 On the dashboard computer, set the API URL to the **collector computer**, using

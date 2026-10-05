@@ -19,8 +19,8 @@ start the dashboard in that same container.
 
 | Component | Command / interface | Role |
 | --- | --- | --- |
-| Collector | `python -m collector`, port `8766` | Owns the SMLIGHT connection, gathers readings, saves history, serves JSON |
-| Optional dashboard | `python -m dashboard`, port `8765` | Reads the collector API and displays the readings |
+| Collector | `uv run python -m collector`, port `8766` | Owns the SMLIGHT connection, gathers readings, saves history, serves JSON |
+| Optional dashboard | `uv run python -m dashboard`, port `8765` | Reads the collector API and displays the readings |
 | Collector with dashboard | Set `SOLAR_DASHBOARD=true` in the container | Adds the dashboard on port `8765`; the collector API stays on `8766` |
 | Home Assistant | [REST sensor example](docs/home-assistant.md) | Reads the collector API directly; the dashboard is optional |
 
@@ -79,14 +79,17 @@ Run one collector per SMLIGHT. Other consumers share its API.
 1. Configure the SLZB-06U for the tested RCP firmware and network serial bridge.
    See the [setup guide](docs/setup.md) for firmware details and obtaining your
    network settings.
-2. Install the application:
+2. Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then
+   get the application and its locked dependencies:
 
    ```sh
    git clone https://github.com/daltschu22/solar-city-inverter-radio.git
    cd solar-city-inverter-radio
-   python3 -m venv .venv
-   .venv/bin/pip install -r requirements.txt
+   uv sync --locked
    ```
+
+   uv manages Python and the local environment automatically. No manual venv
+   creation or activation is needed.
 
 3. **Find your inverter's radio settings.** Skip to step 4 if you already know
    its channel, both PAN IDs, and the inverter and original collector EUIs.
@@ -101,7 +104,7 @@ Run one collector per SMLIGHT. Other consumers share its API.
    you use to open its web interface, without `http://` or a trailing slash:
 
    ```sh
-   .venv/bin/python tools/discover_radio.py \
+   uv run python tools/discover_radio.py \
      --host YOUR_BRIDGE_HOST \
      --exclusive-radio \
      --output captures/discovery.json
@@ -135,14 +138,14 @@ Run one collector per SMLIGHT. Other consumers share its API.
 5. Validate without touching the radio:
 
    ```sh
-   .venv/bin/python -m collector.config
+   uv run python -m collector.config
    ```
 
 6. Power off the original collector, if present, and stop any other program
    connected to the SMLIGHT bridge. Then start the replacement:
 
    ```sh
-   .venv/bin/python -m collector
+   uv run python -m collector
    ```
 
 Read the JSON at <http://127.0.0.1:8766/api/live> or use:
@@ -165,7 +168,7 @@ for fields, timestamps, and handling stale values.
 Leave the collector running. In another terminal, from this repository, run:
 
 ```sh
-python3 -m dashboard
+uv run python -m dashboard
 ```
 
 Open <http://127.0.0.1:8765>. The dashboard connects to the collector on port
@@ -185,8 +188,8 @@ The [copyable configuration](docs/home-assistant.md) provides power in W and
 cumulative energy in kWh for the Energy dashboard, including availability checks
 for stale or missing readings. This works with the dashboard process stopped.
 
-**Upgrading from the flat layout:** run `python -m collector` and, optionally,
-`python -m dashboard` from the repository root. Update services that launch the
+**Upgrading from the flat layout:** run `uv run python -m collector` and, optionally,
+`uv run python -m dashboard` from the repository root. Update services that launch the
 old top-level scripts. Existing `radio.local.json`, environment settings, and
 SQLite data need no migration. Rebuild containers to use the new layout;
 `SOLAR_DASHBOARD=true` still enables both programs in one container.
@@ -241,13 +244,18 @@ Run Python module commands from the repository root. Local configuration stays
 there, and the default database remains `data/solar-history.sqlite3`.
 
 ```sh
-.venv/bin/python -m pip install -r requirements.txt
-PATH="$PWD/.venv/bin:$PATH" ./check
+uv sync --locked
+./check
 ```
 
 `./check` runs the Python and JavaScript suites and the publication-hygiene check.
 Node.js 20 or newer is needed for the JavaScript tests. Tests use a separate,
 synthetic configuration and do not connect to a radio.
+
+Dependencies live in `pyproject.toml`; commit `uv.lock` alongside dependency
+changes. `.python-version` selects Python 3.12 by default; CI also tests 3.14.
+Use `UV_PYTHON=3.14 ./check` to test that version locally. This application runs
+from the checkout and does not need a wheel build or package installation.
 
 ## License
 

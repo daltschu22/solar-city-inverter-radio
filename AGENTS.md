@@ -21,7 +21,7 @@ installation.
 
 ## Helping someone set it up
 
-Run all `python -m ...` commands from the repository root. Configuration stays
+Run all `uv run ...` commands from the repository root. Configuration stays
 in that directory; the source folders do not contain installation settings.
 
 1. Inspect existing configuration and services first. Reuse information already
@@ -34,10 +34,11 @@ in that directory; the source folders do not contain installation settings.
    Power-One PVI-5000-OUTD-US-Z with its legacy Digi radio and a SMLIGHT SLZB-06U
    CC2652P running the documented OpenThread RCP firmware. This application owns
    the raw radio connection; it does not use ZHA, Zigbee2MQTT, or an OTBR.
-3. Install Python 3.12+ dependencies in a virtual environment if using Python or
-   the discovery tools: `python3 -m venv .venv`, then
-   `.venv/bin/pip install -r requirements.txt`. Container builds install their
-   own runtime dependencies.
+3. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and run
+   `uv sync --locked`. It manages Python and the local environment; no manual
+   venv activation is needed. `pyproject.toml` declares dependencies, `uv.lock`
+   pins them, and `.python-version` selects Python 3.12 by default. Container
+   builds use the same lockfile. Keep metadata and lockfile changes together.
 4. If radio settings are missing, follow [discovery](docs/discovery.md). Offline
    capture analysis does not touch hardware. A live scan resets/configures the
    SMLIGHT for listening, so establish exclusive access before passing
@@ -51,17 +52,17 @@ in that directory; the source folders do not contain installation settings.
    settings is unverified; explain missing evidence instead of promising pairing.
 6. Save installation settings in ignored `.env` or `radio.local.json`. Preserve
    existing settings; do not overwrite them with a template. Environment
-   variables override JSON. Python does not load `.env` automatically: export
-   its reviewed values as shown in [setup](docs/setup.md#environment-variables).
+   variables override JSON. Pass `--env-file .env` to `uv run` to load reviewed
+   settings, as shown in [setup](docs/setup.md#environment-variables).
    If `SOLAR_CONFIG` is set, its file must exist. Validate using
-   `.venv/bin/python -m collector.config`; this opens no radio connection.
+   `uv run python -m collector.config`; this opens no radio connection.
 7. Before starting collection, establish that the original SolarCity/Tesla
    collector is powered off and this process has exclusive use of the bridge.
    Act on existing user authorization and known state; ask when a required
    physical step or service ownership is unknown. Do not change inverter
    operating settings or flash firmware as an incidental setup action.
 8. Follow the [container commands](docs/setup.md#run-the-collector-in-a-container)
-   or run `.venv/bin/python -m collector`. Build with
+   or run `uv run python -m collector`. Build with
    `docker build -t solar-city-inverter-radio .`. Preserve the existing data
    volume on upgrades. Use the user's chosen service manager for unattended
    operation and document the start, stop, and update commands.
@@ -90,7 +91,7 @@ authenticated proxy; the application has no built-in authentication.
 - Read [protocol](docs/protocol.md) before changing radio behavior and
   [API documentation](docs/api.md) before changing response fields. Update the
   corresponding docs when commands, settings, or behavior change.
-- Run `PATH="$PWD/.venv/bin:$PATH" ./check` before committing code changes.
+- Run `./check` before committing code changes.
   Development checks require Node.js 20+ as well as the Python dependencies
   (CI uses Node.js 22);
   Node.js is not required at runtime. The script uses synthetic radio settings

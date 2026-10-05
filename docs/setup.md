@@ -65,7 +65,7 @@ changing PAN IDs cannot make another inverter protocol compatible.
 For an optional capture with the production collector stopped:
 
 ```sh
-.venv/bin/python tools/smlight_capture.py \
+uv run python tools/smlight_capture.py \
   --host YOUR_BRIDGE_HOST --channels YOUR_DECIMAL_CHANNEL \
   --seconds 90 --output captures/reference
 ```
@@ -76,7 +76,8 @@ The capture tool resets/configures its bridge and therefore requires exclusive
 access even when listening passively. It does not transmit by default.
 
 The optional `--beacon-request` flag actively sends a discovery frame and requires
-`pip install scapy==2.7.0`. It is not needed for the passive command above.
+the optional capture dependency. Use `uv run --extra capture python` in place
+of `uv run python` when adding that flag. Passive capture needs no extra.
 
 **Capture limitation:** stock TI RCP promiscuous reception may omit ACK-requested
 unicast frames. A partial capture can reveal some settings but cannot establish
@@ -105,7 +106,7 @@ inverter/collector identities. No live radio session can start without valid
 installation settings. Changes require restarting the app. If `SOLAR_CONFIG` is
 set, that file must exist and contain valid JSON even when using overrides.
 
-Run `.venv/bin/python -m collector.config` to validate without opening a connection.
+Run `uv run python -m collector.config` to validate without opening a connection.
 
 The optional `initial_address` defaults to a synthetic unicast seed. It is used
 when assigning an address to the known inverter; it is not assumed to be a live
@@ -138,20 +139,21 @@ cp config.example.env .env
 
 Fill in your bridge address and the five reviewed settings from
 [discovery](discovery.md#apply-reviewed-values). The `.env` file is ignored by
-Git. Python does not read it automatically; export its values in your shell:
+Git. Load its reviewed values explicitly with uv:
 
 ```sh
-set -a
-. ./.env
-set +a
-.venv/bin/python -m collector.config
-.venv/bin/python -m collector
+uv run --env-file .env python -m collector.config
+uv run --env-file .env python -m collector
 ```
 
 Use this after capture has stopped and the original collector is powered off,
 as described in [Start and verify](#start-and-verify). For a new environment-only
 setup, leave `SOLAR_CONFIG` unset and skip creating `radio.local.json`. Your service
 manager can also supply these variables directly.
+
+Plain Python does not load `.env` automatically. If using it directly, export
+the settings through your shell or service manager first. uv does not load the
+file unless requested with `--env-file` (or its corresponding uv environment setting).
 
 Additional environment settings:
 
@@ -174,7 +176,7 @@ Power off the original collector, if present. Ensure no capture tool, ZHA, Zigbe
 or second instance owns the SMLIGHT connection. Then run:
 
 ```sh
-.venv/bin/python -m collector
+uv run python -m collector
 ```
 
 The startup sequence is:
@@ -249,7 +251,7 @@ Keep `.env` private. Do not bake installation values into the image.
 
 For an existing installation, reuse its database volume and config. The database
 schema is unchanged. Replace commands that launch old top-level Python scripts
-with `python -m collector` or `python -m dashboard`, with the repository root as
+with `uv run python -m collector` or `uv run python -m dashboard`, with the repository root as
 the working directory. Containers use `python -m runtime` automatically; rebuild
 the image after updating. The [dashboard guide](dashboard.md) covers the separate
 viewer and optional combined container.
