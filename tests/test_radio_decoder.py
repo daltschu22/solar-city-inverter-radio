@@ -4,8 +4,8 @@ import time
 import unittest
 from pathlib import Path
 
-from history import SolarHistoryStore
-from radio_protocol import (
+from collector.history import SolarHistoryStore
+from collector.radio_protocol import (
     build_modbus_transactions,
     decode_ieee802154_frame,
     decode_sunspec_values,

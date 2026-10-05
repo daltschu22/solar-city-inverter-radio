@@ -9,9 +9,9 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
-import collector
-from history import SolarHistoryStore
-import server
+from collector import api as collector
+from collector.history import SolarHistoryStore
+from dashboard import server
 
 
 def request(httpd, path, method="GET"):
@@ -95,7 +95,7 @@ class DashboardTests(unittest.TestCase):
         response.read.return_value = b"not JSON"
         response.__enter__ = Mock(return_value=response)
         response.__exit__ = Mock(return_value=False)
-        with patch("server.urllib.request.urlopen", return_value=response):
+        with patch("dashboard.server.urllib.request.urlopen", return_value=response):
             status, body = request(self.dashboard, "/api/live")
         self.assertEqual(status, 502)
         self.assertEqual(json.loads(body), {"error": "Collector API unavailable"})
@@ -104,9 +104,9 @@ class DashboardTests(unittest.TestCase):
         code = '''
 import sys
 from unittest.mock import Mock, patch
-import server
+from dashboard import server
 httpd = Mock()
-with patch('server.ThreadingHTTPServer', return_value=httpd), patch('server.signal.signal'):
+with patch('dashboard.server.ThreadingHTTPServer', return_value=httpd), patch('dashboard.server.signal.signal'):
     server.main()
 httpd.serve_forever.assert_called_once()
 httpd.server_close.assert_called_once()

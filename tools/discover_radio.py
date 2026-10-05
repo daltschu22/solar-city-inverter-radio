@@ -14,7 +14,7 @@ import struct
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from radio_protocol import decode_ieee802154_frame, decode_modbus_message
+from collector.radio_protocol import decode_ieee802154_frame, decode_modbus_message
 
 FIELDS = ('channel', 'pan_id', 'extended_pan_id', 'inverter_eui', 'collector_eui')
 

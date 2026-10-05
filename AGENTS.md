@@ -7,19 +7,22 @@ installation.
 
 ## How the application works
 
-- `collector.py` owns the SMLIGHT connection, maintains the radio network, polls
+- `collector/api.py` owns the SMLIGHT connection, maintains the radio network, polls
   measurements, and reads/writes SQLite. Its HTTP API defaults to port `8766`.
-- `server.py` is the optional dashboard on port `8765`. It reads the collector's
+- `dashboard/server.py` is the optional dashboard on port `8765`. It reads the collector's
   HTTP API; it never opens the radio or SQLite database. Set
   `SOLAR_COLLECTOR_URL` when the collector is on another host or container.
 - `Dockerfile` builds one image. The default command runs the collector. Setting
   `SOLAR_DASHBOARD=true` also starts the dashboard, connected automatically to
-  the local collector. `container.py` selects the mode; `combined.py` supervises
+  the local collector. `runtime/entrypoint.py` selects the mode; `runtime/combined.py` supervises
   both processes. API requests do not trigger inverter polls.
 - The database belongs in persistent storage: `/data/solar-history.sqlite3`
   inside the container, configurable with `SOLAR_HISTORY_PATH`.
 
 ## Helping someone set it up
+
+Run all `python -m ...` commands from the repository root. Configuration stays
+in that directory; the source folders do not contain installation settings.
 
 1. Inspect existing configuration and services first. Reuse information already
    provided; ask only for missing details. Establish the inverter model, bridge
@@ -51,14 +54,14 @@ installation.
    variables override JSON. Python does not load `.env` automatically: export
    its reviewed values as shown in [setup](docs/setup.md#environment-variables).
    If `SOLAR_CONFIG` is set, its file must exist. Validate using
-   `.venv/bin/python config.py`; this opens no radio connection.
+   `.venv/bin/python -m collector.config`; this opens no radio connection.
 7. Before starting collection, establish that the original SolarCity/Tesla
    collector is powered off and this process has exclusive use of the bridge.
    Act on existing user authorization and known state; ask when a required
    physical step or service ownership is unknown. Do not change inverter
    operating settings or flash firmware as an incidental setup action.
 8. Follow the [container commands](docs/setup.md#run-the-collector-in-a-container)
-   or run `.venv/bin/python collector.py`. Build with
+   or run `.venv/bin/python -m collector`. Build with
    `docker build -t solar-city-inverter-radio .`. Preserve the existing data
    volume on upgrades. Use the user's chosen service manager for unattended
    operation and document the start, stop, and update commands.

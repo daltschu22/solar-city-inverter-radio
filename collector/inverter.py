@@ -5,7 +5,7 @@ import sqlite3
 import threading
 import time
 
-from radio_protocol import signed_16
+from collector.radio_protocol import signed_16
 
 
 def decode_details(registers):

@@ -9,9 +9,9 @@ import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from history import SolarHistoryStore
+from collector.history import SolarHistoryStore
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 SOLAR_HISTORY_PATH = Path(os.environ.get("SOLAR_HISTORY_PATH", ROOT / "data" / "solar-history.sqlite3"))
 
 
@@ -98,7 +98,7 @@ def secure_runtime_file_permissions():
 
 def main():
     global solar_history, smlight_collector
-    from config import require_configured
+    from collector.config import require_configured
     try:
         configuration = require_configured()
     except ValueError as exc:
@@ -107,7 +107,7 @@ def main():
     latitude, longitude = os.environ.get("SOLAR_LATITUDE"), os.environ.get("SOLAR_LONGITUDE")
     night_schedule = None
     if latitude is not None or longitude is not None:
-        from daylight import NightSchedule
+        from collector.daylight import NightSchedule
         if latitude is None or longitude is None:
             raise SystemExit("Set both SOLAR_LATITUDE and SOLAR_LONGITUDE")
         night_schedule = NightSchedule(float(latitude), float(longitude))
@@ -129,7 +129,7 @@ def main():
     signal.signal(signal.SIGINT, request_shutdown)
     print(f"SolarCity collector API: port {port}; GET /api/live or /api/history")
     print(f"Solar history: {SOLAR_HISTORY_PATH}")
-    from smlight_collector import SmlightCollector
+    from collector.smlight_collector import SmlightCollector
     smlight_collector = SmlightCollector(host, solar_history, port=configuration.port,
                                        night_schedule=night_schedule)
     smlight_collector.start()

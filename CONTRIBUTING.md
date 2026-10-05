@@ -26,8 +26,8 @@ Preserve the one-connection ownership rule and the startup conflict check. A tes
 run must never contact a live bridge. Avoid adding automatic network resets or
 inverter writes as recovery strategies.
 
-Keep collection independent of the dashboard. `collector.py` owns the radio and
-database; `server.py` serves the optional UI and proxies reads to the collector
+Keep collection independent of the dashboard. `collector/api.py` owns the radio and
+database; `dashboard/server.py` serves the optional UI and proxies reads to the collector
 API. Decoder and storage modules must import independently of the dashboard.
 Consumers must not create extra radio polls when reading cached measurements.
 

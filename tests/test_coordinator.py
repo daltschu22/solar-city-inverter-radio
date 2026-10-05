@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from coordinator import Coordinator, beacon, inverter_left, link_status
-from radio_protocol import decode_ieee802154_frame
+from collector.coordinator import Coordinator, beacon, inverter_left, link_status
+from collector.radio_protocol import decode_ieee802154_frame
 from tools.smlight_poll import COLLECTOR, INVERTER, PAN, is_inverter
 
 

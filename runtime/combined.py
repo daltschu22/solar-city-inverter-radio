@@ -2,14 +2,12 @@
 """Optional launcher for a collector and dashboard in one container."""
 
 import os
-from pathlib import Path
 import signal
 import subprocess
 import sys
 import time
 
 
-ROOT = Path(__file__).resolve().parent
 GRACEFUL_TIMEOUT = 15
 
 
@@ -66,8 +64,8 @@ def main():
         api_host = "127.0.0.1"
     dashboard_env = {**os.environ, "SOLAR_COLLECTOR_URL": f"http://{api_host}:{api_port}"}
     return supervise([
-        ("collector", [sys.executable, str(ROOT / "collector.py")], collector_env),
-        ("dashboard", [sys.executable, str(ROOT / "server.py")], dashboard_env),
+        ("collector", [sys.executable, "-m", "collector"], collector_env),
+        ("dashboard", [sys.executable, "-m", "dashboard"], dashboard_env),
     ])
 
 

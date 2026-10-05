@@ -1,7 +1,7 @@
 from datetime import datetime
 import unittest
 
-from daylight import NightSchedule
+from collector.daylight import NightSchedule
 
 
 def timestamp(value):

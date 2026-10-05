@@ -11,7 +11,7 @@ import struct
 from tools.smlight_poll import CHANNEL, COLLECTOR, INVERTER, PAN, envelope, is_inverter
 
 
-from config import CONFIG
+from collector.config import CONFIG
 
 EXTENDED_PAN = CONFIG.extended_pan_id
 

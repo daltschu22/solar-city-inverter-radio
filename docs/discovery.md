@@ -16,7 +16,7 @@ Python dependencies. A site configuration is not required, even if a partially
 edited `radio.local.json` already exists.
 
 You can scan with the same SMLIGHT you will later use for the replacement.
-First stop any program connected to that SMLIGHT, including `collector.py`, ZHA,
+First stop any program connected to that SMLIGHT, including this project's collector, ZHA,
 Zigbee2MQTT, or OTBR. The `--exclusive-radio` flag confirms you have done this:
 the capture process resets and configures the bridge for listening. It never
 stops another service automatically. A separate receiver is useful if you want
@@ -187,7 +187,7 @@ do not reverse the bytes. The script never applies a report automatically.
 Then validate the completed file without opening a radio connection:
 
 ```sh
-.venv/bin/python config.py
+.venv/bin/python -m collector.config
 ```
 
 By default the app reads `radio.local.json` from the working directory. If you
@@ -198,7 +198,7 @@ will connect.
 For an environment-only setup, copy `config.example.env` to `.env` and use the
 same report-to-setting mapping above. Export the values as described in the
 [environment setup](setup.md#environment-variables), then validate with the same
-`config.py` command. Environment values override JSON fields when both are used.
+`python -m collector.config` command. Environment values override JSON fields when both are used.
 
 Once capture has finished, power off the original collector if you have one,
 give the replacement exclusive access to the bridge, and follow

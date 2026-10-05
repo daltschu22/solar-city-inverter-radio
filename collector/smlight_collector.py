@@ -8,9 +8,9 @@ import threading
 import time
 
 from tools.smlight_capture import decode_record
-from inverter import TelemetryStore
-from coordinator import Coordinator, inverter_left
-from config import require_configured
+from collector.inverter import TelemetryStore
+from collector.coordinator import Coordinator, inverter_left
+from collector.config import require_configured
 from tools.smlight_poll import CHANNEL, COLLECTOR, INVERTER, PAN, acknowledgment, is_inverter, read_request, response_values
 
 

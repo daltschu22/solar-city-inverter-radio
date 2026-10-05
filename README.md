@@ -19,8 +19,8 @@ start the dashboard in that same container.
 
 | Component | Command / interface | Role |
 | --- | --- | --- |
-| Collector | `python collector.py`, port `8766` | Owns the SMLIGHT connection, gathers readings, saves history, serves JSON |
-| Optional dashboard | `python server.py`, port `8765` | Reads the collector API and displays the readings |
+| Collector | `python -m collector`, port `8766` | Owns the SMLIGHT connection, gathers readings, saves history, serves JSON |
+| Optional dashboard | `python -m dashboard`, port `8765` | Reads the collector API and displays the readings |
 | Collector with dashboard | Set `SOLAR_DASHBOARD=true` in the container | Adds the dashboard on port `8765`; the collector API stays on `8766` |
 | Home Assistant | [REST sensor example](docs/home-assistant.md) | Reads the collector API directly; the dashboard is optional |
 
@@ -92,7 +92,7 @@ Run one collector per SMLIGHT. Other consumers share its API.
    its channel, both PAN IDs, and the inverter and original collector EUIs.
 
    Use the same SMLIGHT that will run the replacement. Close any other program
-   connected to it, including this project's `collector.py`, before scanning.
+   connected to it, including this project's collector, before scanning.
    `--exclusive-radio` confirms that this script has the SMLIGHT to itself;
    scanning resets the SMLIGHT radio into listening mode.
 
@@ -135,14 +135,14 @@ Run one collector per SMLIGHT. Other consumers share its API.
 5. Validate without touching the radio:
 
    ```sh
-   .venv/bin/python config.py
+   .venv/bin/python -m collector.config
    ```
 
 6. Power off the original collector, if present, and stop any other program
    connected to the SMLIGHT bridge. Then start the replacement:
 
    ```sh
-   .venv/bin/python collector.py
+   .venv/bin/python -m collector
    ```
 
 Read the JSON at <http://127.0.0.1:8766/api/live> or use:
@@ -165,7 +165,7 @@ for fields, timestamps, and handling stale values.
 Leave the collector running. In another terminal, from this repository, run:
 
 ```sh
-python3 server.py
+python3 -m dashboard
 ```
 
 Open <http://127.0.0.1:8765>. The dashboard connects to the collector on port
@@ -185,11 +185,11 @@ The [copyable configuration](docs/home-assistant.md) provides power in W and
 cumulative energy in kWh for the Energy dashboard, including availability checks
 for stale or missing readings. This works with the dashboard process stopped.
 
-**Upgrading from the combined process:** `server.py` now runs only the dashboard.
-Start `collector.py` with your existing `radio.local.json` and database first.
-Existing SQLite data needs no migration. Update service/container commands using
-the [setup guide](docs/setup.md) and [dashboard guide](docs/dashboard.md).
-Set `SOLAR_DASHBOARD=true` to keep both programs in one container.
+**Upgrading from the flat layout:** run `python -m collector` and, optionally,
+`python -m dashboard` from the repository root. Update services that launch the
+old top-level scripts. Existing `radio.local.json`, environment settings, and
+SQLite data need no migration. Rebuild containers to use the new layout;
+`SOLAR_DASHBOARD=true` still enables both programs in one container.
 
 ## Documentation
 
@@ -225,6 +225,20 @@ you intend to expose them on a trusted network. The API includes operational
 details and the inverter's reported serial number.
 
 ## Development
+
+The source is organized by component:
+
+```text
+collector/          Radio network, polling, configuration, SQLite, and JSON API
+dashboard/          Web server and static assets
+runtime/            Container startup and process supervision
+tools/              Discovery, capture, polling, and publication utilities
+tests/              Offline Python and JavaScript tests
+docs/               Setup, protocol, API, and integration guides
+```
+
+Run Python module commands from the repository root. Local configuration stays
+there, and the default database remains `data/solar-history.sqlite3`.
 
 ```sh
 .venv/bin/python -m pip install -r requirements.txt

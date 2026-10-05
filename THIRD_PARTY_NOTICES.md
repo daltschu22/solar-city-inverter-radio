@@ -3,7 +3,7 @@
 The project's MIT license applies to its own code and documentation. Dependencies
 and bundled third-party files retain their respective licenses.
 
-- **Apache ECharts 6.1.0** is bundled in `static/vendor/echarts.min.js` under Apache-2.0.
+- **Apache ECharts 6.1.0** is bundled in `dashboard/static/vendor/echarts.min.js` under Apache-2.0.
   Its license, notice, upstream source URL, and checksum are retained in that directory.
 - **OpenThread pyspinel** is installed from a pinned upstream revision and is Apache-2.0 licensed.
 - **pyserial 3.5** is installed as a dependency under BSD-3-Clause.

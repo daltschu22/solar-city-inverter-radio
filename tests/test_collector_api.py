@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import collector
+from collector import api as collector
 
 
 class CollectorApiTests(unittest.TestCase):
@@ -67,7 +67,7 @@ class CollectorApiTests(unittest.TestCase):
     def test_startup_has_no_legacy_or_sample_fallback(self):
         with patch.object(collector, "smlight_collector", None):
             self.assertEqual(self.request("GET", "/api/live")[0], 503)
-        with patch("config.require_configured", side_effect=ValueError("Create radio.local.json")):
+        with patch("collector.config.require_configured", side_effect=ValueError("Create radio.local.json")):
             with self.assertRaisesRegex(SystemExit, "radio.local.json"):
                 collector.main()
 
@@ -100,9 +100,20 @@ class CollectorApiTests(unittest.TestCase):
         import os
         import subprocess
         import sys
-        subprocess.run([sys.executable, "-c", "import sys; import collector, tools.discover_radio, smlight_collector; assert 'server' not in sys.modules"],
+        subprocess.run([sys.executable, "-c", "import sys; import collector.api, tools.discover_radio, collector.smlight_collector; assert 'dashboard' not in sys.modules"],
                        check=True, cwd=Path(__file__).resolve().parents[1],
                        env={**os.environ, "SOLAR_CONFIG": str(Path(__file__).with_name("config.synthetic.json"))})
+
+    def test_default_database_location_survives_package_move(self):
+        import os
+        import subprocess
+        import sys
+        environment = {key: value for key, value in os.environ.items() if key != "SOLAR_HISTORY_PATH"}
+        root = Path(__file__).resolve().parents[1]
+        code = "from collector.api import SOLAR_HISTORY_PATH; print(SOLAR_HISTORY_PATH)"
+        result = subprocess.run([sys.executable, "-c", code], check=True, cwd=root,
+                                env=environment, capture_output=True, text=True)
+        self.assertEqual(Path(result.stdout.strip()), root / "data" / "solar-history.sqlite3")
 
 
 if __name__ == "__main__":

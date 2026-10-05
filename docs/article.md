@@ -134,7 +134,8 @@ operating settings.
 ## Reproducing the setup
 
 The repository includes the collector, decoder, synthetic protocol tests, an
-optional dashboard, and separate container build targets. The detailed
+optional dashboard, and a single container image with an optional dashboard flag.
+The detailed
 [setup guide](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/setup.md)
 covers the exact configuration fields and startup sequence.
 
@@ -146,14 +147,15 @@ The main steps are:
    to gather your channel, operating PAN IDs, expected collector EUI, and inverter EUI.
    Existing captures or accessible radio configuration are also useful sources.
 3. Review the evidence, put the observed values in `radio.local.json`, and validate
-   the file with `python config.py`.
+   the file with `python -m collector.config`.
 4. Power off the original collector, if present, and give the Python collector
    exclusive access to the radio bridge after capture has finished.
 5. Validate fresh readings, then observe startup and overnight recovery.
 
-Run `python collector.py` for collection and the JSON API on port `8766`. That is
+From the repository root, run `python -m collector` for collection and the JSON
+API on port `8766`. That is
 a complete setup for anyone who wants to consume the data themselves. The
-included dashboard runs separately with `python server.py` on port `8765` and
+included dashboard runs separately with `python -m dashboard` on port `8765` and
 reads the collector API. Home Assistant can use the same API through its REST
 sensors; the repository includes a
 [power and energy example](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/home-assistant.md).

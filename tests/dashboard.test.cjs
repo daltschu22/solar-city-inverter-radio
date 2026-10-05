@@ -4,7 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
 
-const staticDir = path.join(__dirname, "../static");
+const staticDir = path.join(__dirname, "../dashboard/static");
 const html = fs.readFileSync(path.join(staticDir, "index.html"), "utf8");
 const source = fs.readFileSync(path.join(staticDir, "app.js"), "utf8");
 

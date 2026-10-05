@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from config import ENV_FIELDS, RadioConfig, load_config, require_configured
+from collector.config import ENV_FIELDS, RadioConfig, load_config, require_configured
 
 
 class ConfigTests(unittest.TestCase):
@@ -37,9 +37,9 @@ class ConfigTests(unittest.TestCase):
 
     def assert_wire_configuration(self, settings):
         code = '''
-from config import CONFIG
-from coordinator import Coordinator, beacon
-from radio_protocol import decode_ieee802154_frame
+from collector.config import CONFIG
+from collector.coordinator import Coordinator, beacon
+from collector.radio_protocol import decode_ieee802154_frame
 from tools.smlight_poll import read_request
 assert CONFIG.host == "radio.example.invalid" and CONFIG.port == 12345
 assert CONFIG.channel == 20
@@ -134,8 +134,8 @@ assert Coordinator().assigned_address == 0x6789
             load_config(self.path)
 
     def test_unconfigured_radio_fails_before_opening_socket(self):
-        from smlight_collector import RadioSession
-        with patch("config.CONFIG", RadioConfig()), patch("socket.create_connection") as connect:
+        from collector.smlight_collector import RadioSession
+        with patch("collector.config.CONFIG", RadioConfig()), patch("socket.create_connection") as connect:
             with self.assertRaisesRegex(ValueError, "radio.local.json"):
                 RadioSession("radio.example.invalid", 6638)
             connect.assert_not_called()

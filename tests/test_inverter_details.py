@@ -3,9 +3,9 @@ import tempfile
 import time
 from pathlib import Path
 
-from inverter import TelemetryStore, decode_details
+from collector.inverter import TelemetryStore, decode_details
 from tools.smlight_poll import READS, read_request
-from radio_protocol import decode_ieee802154_frame, decode_modbus_message
+from collector.radio_protocol import decode_ieee802154_frame, decode_modbus_message
 
 
 def verified_registers():

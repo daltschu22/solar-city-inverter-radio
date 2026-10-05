@@ -8,7 +8,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-import combined
+from runtime import combined
 
 
 WORKER = '''
@@ -31,7 +31,7 @@ class CombinedTests(unittest.TestCase):
         self.root = Path(self.directory.name)
 
     def start(self, services, timeout=2):
-        code = f"import combined,sys; combined.GRACEFUL_TIMEOUT={timeout!r}; sys.exit(combined.supervise({services!r}))"
+        code = f"from runtime import combined; import sys; combined.GRACEFUL_TIMEOUT={timeout!r}; sys.exit(combined.supervise({services!r}))"
         process = subprocess.Popen([sys.executable, "-c", code],
                                    cwd=Path(__file__).resolve().parents[1],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -116,11 +116,11 @@ class CombinedTests(unittest.TestCase):
         settings = {"SOLAR_API_PORT": "9876", "PORT": "9875", "SOLAR_API_BIND": "0.0.0.0",
                     "SOLAR_COLLECTOR_URL": "http://other.example.invalid:8766",
                     "SOLAR_RADIO_HOST": "radio.example.invalid"}
-        with patch.dict(os.environ, settings, clear=True), patch("combined.supervise", return_value=7) as supervise:
+        with patch.dict(os.environ, settings, clear=True), patch("runtime.combined.supervise", return_value=7) as supervise:
             self.assertEqual(combined.main(), 7)
         collector, dashboard = supervise.call_args.args[0]
-        self.assertEqual(Path(collector[1][1]).name, "collector.py")
-        self.assertEqual(Path(dashboard[1][1]).name, "server.py")
+        self.assertEqual(collector[1][1:], ["-m", "collector"])
+        self.assertEqual(dashboard[1][1:], ["-m", "dashboard"])
         self.assertEqual(collector[2]["SOLAR_API_BIND"], "0.0.0.0")
         self.assertEqual(collector[2]["SOLAR_RADIO_HOST"], "radio.example.invalid")
         self.assertEqual(dashboard[2]["SOLAR_COLLECTOR_URL"], "http://127.0.0.1:9876")
@@ -129,7 +129,7 @@ class CombinedTests(unittest.TestCase):
     def test_dashboard_uses_collector_bind_address_or_default_loopback(self):
         for settings, host in (({}, "127.0.0.1"), ({"SOLAR_API_BIND": "127.0.0.2"}, "127.0.0.2")):
             with self.subTest(settings=settings), patch.dict(os.environ, settings, clear=True):
-                with patch("combined.supervise", return_value=0) as supervise:
+                with patch("runtime.combined.supervise", return_value=0) as supervise:
                     combined.main()
                 collector, dashboard = supervise.call_args.args[0]
                 self.assertEqual(collector[2], settings)
@@ -138,6 +138,6 @@ class CombinedTests(unittest.TestCase):
     def test_invalid_or_colliding_ports_fail_before_starting_services(self):
         for api, dashboard in (("8765", "8765"), ("0", "8765"), ("8766", "65536"), ("bad", "8765")):
             with self.subTest(api=api, dashboard=dashboard), patch.dict(os.environ, {"SOLAR_API_PORT": api, "PORT": dashboard}, clear=True):
-                with patch("combined.supervise") as supervise, self.assertRaises(SystemExit):
+                with patch("runtime.combined.supervise") as supervise, self.assertRaises(SystemExit):
                     combined.main()
                 supervise.assert_not_called()

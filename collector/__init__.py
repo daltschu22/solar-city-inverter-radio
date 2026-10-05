@@ -1,0 +1,1 @@
+"""SolarCity collector package."""

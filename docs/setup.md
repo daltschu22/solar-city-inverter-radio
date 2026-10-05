@@ -105,7 +105,7 @@ inverter/collector identities. No live radio session can start without valid
 installation settings. Changes require restarting the app. If `SOLAR_CONFIG` is
 set, that file must exist and contain valid JSON even when using overrides.
 
-Run `.venv/bin/python config.py` to validate without opening a connection.
+Run `.venv/bin/python -m collector.config` to validate without opening a connection.
 
 The optional `initial_address` defaults to a synthetic unicast seed. It is used
 when assigning an address to the known inverter; it is not assumed to be a live
@@ -144,8 +144,8 @@ Git. Python does not read it automatically; export its values in your shell:
 set -a
 . ./.env
 set +a
-.venv/bin/python config.py
-.venv/bin/python collector.py
+.venv/bin/python -m collector.config
+.venv/bin/python -m collector
 ```
 
 Use this after capture has stopped and the original collector is powered off,
@@ -158,7 +158,7 @@ Additional environment settings:
 | Variable | Default and purpose |
 | --- | --- |
 | `SOLAR_CONFIG` | `radio.local.json`; optional JSON configuration path |
-| `SOLAR_HISTORY_PATH` | `data/solar-history.sqlite3` beside `collector.py` |
+| `SOLAR_HISTORY_PATH` | `data/solar-history.sqlite3` in the repository root |
 | `SOLAR_API_BIND` | `127.0.0.1`; collector API listening address |
 | `SOLAR_API_PORT` | `8766`; collector API port |
 | `SOLAR_DASHBOARD` | `false`; set `true` to also run the dashboard with the container's default command |
@@ -174,7 +174,7 @@ Power off the original collector, if present. Ensure no capture tool, ZHA, Zigbe
 or second instance owns the SMLIGHT connection. Then run:
 
 ```sh
-.venv/bin/python collector.py
+.venv/bin/python -m collector
 ```
 
 The startup sequence is:
@@ -248,12 +248,11 @@ docker run --rm --name solar-city-collector --network solar-city \
 Keep `.env` private. Do not bake installation values into the image.
 
 For an existing installation, reuse its database volume and config. The database
-schema is unchanged. The former combined `server.py` command now serves only the
-dashboard: update your collector service command to `collector.py`. Move any
-collector API bind/port settings to `SOLAR_API_BIND` and `SOLAR_API_PORT`, and
-update API clients for port `8766` (or your chosen port). The
-[dashboard guide](dashboard.md) covers the separate viewer and optional combined
-container.
+schema is unchanged. Replace commands that launch old top-level Python scripts
+with `python -m collector` or `python -m dashboard`, with the repository root as
+the working directory. Containers use `python -m runtime` automatically; rebuild
+the image after updating. The [dashboard guide](dashboard.md) covers the separate
+viewer and optional combined container.
 
 ## Contributing a useful reproduction report
 

@@ -4,10 +4,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import collector
-from history import SolarHistoryStore
-from radio_protocol import decode_ieee802154_frame
-from smlight_collector import CHANNEL, COLLECTOR, QUERY_CYCLE, RadioSession, SmlightCollector
+from collector import api as collector
+from collector.history import SolarHistoryStore
+from collector.radio_protocol import decode_ieee802154_frame
+from collector.smlight_collector import CHANNEL, COLLECTOR, QUERY_CYCLE, RadioSession, SmlightCollector
 from test_inverter_details import verified_registers
 from test_smlight_poll import power_response
 from test_coordinator import (association_request, data_request, device_announce, leave_notification,
@@ -58,7 +58,7 @@ class CollectorTests(unittest.TestCase):
             return frame
 
         session.receive.side_effect = receive
-        with patch("smlight_collector.time.monotonic", side_effect=lambda: clock[0]):
+        with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]):
             self.collector.run_session(session)
         calls = session.method_calls
         pending = next(i for i, call in enumerate(calls) if call[0] == "set_pending_inverter" and call.args == (True,))
@@ -138,7 +138,7 @@ class CollectorTests(unittest.TestCase):
         for index, kind, start, end in ((1, "inverter_ac", 40069, 40096),
                                        (2, "inverter_dc", 40096, 40121)):
             values = {"registers": {k: registers[k] for k in range(start, end)}}
-            with patch("smlight_collector.response_values", return_value=values):
+            with patch("collector.smlight_collector.response_values", return_value=values):
                 self.assertTrue(self.collector.accept_response(self.frame(index), kind))
         self.assertIsNone(self.history.latest())
         self.assertIsNone(self.collector.energy)
@@ -153,7 +153,7 @@ class CollectorTests(unittest.TestCase):
 
     def test_energy_only_packet_does_not_create_power_reading(self):
         frame = self.frame()
-        with patch("smlight_collector.response_values", return_value={"lifetime_wh": 1000}):
+        with patch("collector.smlight_collector.response_values", return_value={"lifetime_wh": 1000}):
             self.assertTrue(self.collector.accept_response(frame, "energy"))
         self.assertIsNone(self.history.latest())
         self.collector.accept_response(self.frame(2, frame["observed_at"] + 15), "power")
@@ -206,7 +206,7 @@ class CollectorTests(unittest.TestCase):
             return incoming
 
         session.receive.side_effect = receive
-        with patch("smlight_collector.time.monotonic", side_effect=lambda: clock[0]):
+        with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]):
             self.collector.run_session(session)
         frames = [decode_ieee802154_frame({
             "raw": call.args[0][:-2].hex(), "type": "data",
@@ -235,8 +235,8 @@ class CollectorTests(unittest.TestCase):
             return b"test request"
 
         session.receive.side_effect = receive
-        with patch("smlight_collector.time.monotonic", side_effect=lambda: clock[0]), patch(
-            "smlight_collector.read_request", side_effect=read_request,
+        with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]), patch(
+            "collector.smlight_collector.read_request", side_effect=read_request,
         ):
             self.collector.run_session(session)
         self.assertEqual(requests, [(31, "power"), (91, "inverter_ac"), (151, "power")])
@@ -263,8 +263,8 @@ class CollectorTests(unittest.TestCase):
             return b"test request"
 
         session.receive.side_effect = receive
-        with patch("smlight_collector.time.monotonic", side_effect=lambda: clock[0]), patch(
-            "smlight_collector.read_request", side_effect=read_request,
+        with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]), patch(
+            "collector.smlight_collector.read_request", side_effect=read_request,
         ):
             self.collector.run_session(session)
         self.assertEqual(requests, [(31, "power"), (151, "power")])
@@ -284,7 +284,7 @@ class CollectorTests(unittest.TestCase):
             return dict(verification_request(), observed_at=time.time(), rssi=-70)
 
         session.receive.side_effect = receive
-        with patch("smlight_collector.time.monotonic", side_effect=lambda: clock[0]):
+        with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]):
             self.collector.run_session(session)
         status = self.collector.snapshot()
         self.assertEqual(status["requests"], 1)
@@ -328,7 +328,7 @@ class CollectorTests(unittest.TestCase):
 
     def test_standby_survives_restart_without_fabricating_measurements(self):
         now = time.time()
-        with patch("smlight_collector.response_values", return_value={"solar_w_precise": -0.32}):
+        with patch("collector.smlight_collector.response_values", return_value={"solar_w_precise": -0.32}):
             self.collector.accept_response(self.frame(observed_at=now - 3600), "power")
         schedule = Mock()
         schedule.standby_until.return_value = now + 3600
@@ -367,7 +367,7 @@ class CollectorTests(unittest.TestCase):
         session.receive.return_value = None
         self.collector.snapshot = Mock(return_value={"state": "standby"})
         session.check_health.side_effect = self.collector.stop_event.set
-        with patch("smlight_collector.time.monotonic", side_effect=[0, 0, 100, 101, 101]):
+        with patch("collector.smlight_collector.time.monotonic", side_effect=[0, 0, 100, 101, 101]):
             self.collector.run_session(session)
         session.check_health.assert_called_once()
         # A quiet inverter still needs the coordinator's network maintenance.
@@ -381,7 +381,7 @@ class CollectorTests(unittest.TestCase):
         session = Mock(firmware="test")
         session.receive.return_value = None
         session.check_health.side_effect = self.collector.stop_event.set
-        with patch("smlight_collector.time.monotonic", side_effect=[0, 0, 100, 101, 101]):
+        with patch("collector.smlight_collector.time.monotonic", side_effect=[0, 0, 100, 101, 101]):
             self.collector.run_session(session)
         session.check_health.assert_called_once()
         status = self.collector.snapshot()
@@ -394,7 +394,7 @@ class CollectorTests(unittest.TestCase):
         session = Mock(firmware="test")
         session.receive.return_value = None
         session.check_health.side_effect = ConnectionError("SMLIGHT radio health check failed")
-        with patch("smlight_collector.time.monotonic", side_effect=[0, 0, 100, 101]):
+        with patch("collector.smlight_collector.time.monotonic", side_effect=[0, 0, 100, 101]):
             with self.assertRaisesRegex(ConnectionError, "radio health check failed"):
                 self.collector.run_session(session)
         session.check_health.assert_called_once()

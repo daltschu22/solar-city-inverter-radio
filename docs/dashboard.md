@@ -7,11 +7,11 @@ or require the radio's Python dependencies.
 
 ## On the same computer
 
-Finish [part 1: collection](setup.md) and leave `collector.py` running. In another
+Finish [part 1: collection](setup.md) and leave the collector running. In another
 terminal, from the repository directory:
 
 ```sh
-python3 server.py
+python3 -m dashboard
 ```
 
 Open <http://127.0.0.1:8765>. The dashboard proxies its read requests to
@@ -24,14 +24,14 @@ Allow the collector API to listen on a trusted network interface. For example,
 on the collector computer:
 
 ```sh
-SOLAR_API_BIND=0.0.0.0 .venv/bin/python collector.py
+SOLAR_API_BIND=0.0.0.0 .venv/bin/python -m collector
 ```
 
 On the dashboard computer, set the API URL to the **collector computer**, using
 its reachable hostname or IP:
 
 ```sh
-SOLAR_COLLECTOR_URL=http://COLLECTOR_HOST:8766 python3 server.py
+SOLAR_COLLECTOR_URL=http://COLLECTOR_HOST:8766 python3 -m dashboard
 ```
 
 The browser talks to the dashboard; the dashboard talks to the collector. No
@@ -57,7 +57,7 @@ use the same image and override its command to start only the dashboard:
 docker run --rm --name solar-city-dashboard --network solar-city \
   -p 127.0.0.1:8765:8765 \
   -e SOLAR_COLLECTOR_URL=http://solar-city-collector:8766 \
-  solar-city-inverter-radio python server.py
+  solar-city-inverter-radio python -m dashboard
 ```
 
 This command starts only the viewer. It needs no radio config or database mount.

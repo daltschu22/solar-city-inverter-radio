@@ -19,7 +19,7 @@ import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from radio_protocol import build_modbus_transactions, decode_ieee802154_frame
+from collector.radio_protocol import build_modbus_transactions, decode_ieee802154_frame
 
 
 def decode_record(packet, metadata, sweep, observed_at):
