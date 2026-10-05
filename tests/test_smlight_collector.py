@@ -162,6 +162,26 @@ class CollectorTests(unittest.TestCase):
         self.assertIsNone(self.history.latest()["lifetime_wh"])
         self.assertEqual(self.history.latest_energy(), 1000)
 
+    def test_slow_polling_saves_energy_on_next_power_reading_and_expires_it(self):
+        self.collector.interval = 300
+        at = time.time()
+        with patch("collector.smlight_collector.response_values", return_value={"lifetime_wh": 1000}):
+            self.collector.accept_response(self.frame(1, at), "energy")
+        self.collector.accept_response(self.frame(2, at + 301), "power")
+        self.assertEqual(self.history.latest()["lifetime_wh"], 1000)
+        self.collector.accept_response(self.frame(3, at + 901), "power")
+        self.assertIsNone(self.history.latest()["lifetime_wh"])
+        self.assertEqual(self.history.latest_energy_reading()["observed_at"], at + 301)
+
+    def test_configured_reconnect_delay_is_interruptible(self):
+        self.collector.reconnect_interval = 45
+        self.collector.session_factory = Mock(side_effect=ConnectionError("offline test"))
+        self.collector.stop_event = Mock()
+        self.collector.stop_event.is_set.side_effect = [False, True]
+        self.collector.run()
+        self.collector.stop_event.wait.assert_called_once_with(45)
+        self.assertEqual(self.collector.snapshot()["state"], "disconnected")
+
     def test_stale_status_retains_last_verified_power(self):
         self.collector.accept_response(self.frame(observed_at=time.time() - 120), "power")
         self.assertEqual(self.collector.snapshot()["state"], "live")
@@ -217,29 +237,37 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(self.collector.snapshot()["responses"], 0)
         self.assertIsNone(self.history.latest())
 
-    def test_one_query_per_minute_with_power_every_other_query(self):
-        session = Mock(firmware="test")
-        session.transmit.return_value = 0
-        clock = [0]
-        timestamps = iter([1, 31, 46, 61, 90, 91, 106, 150, 151])
-        requests = []
+    def test_configured_query_interval_keeps_power_every_other_query(self):
+        for interval in (15, 60, 300):
+            with self.subTest(interval=interval):
+                self.collector = SmlightCollector("radio.test", self.history, interval=interval)
+                session = Mock(firmware="test")
+                session.transmit.return_value = 0
+                clock = [0]
+                timestamps = iter([1, 31, 31 + interval - 1, 31 + interval,
+                                   31 + interval * 2 - 1, 31 + interval * 2])
+                requests = []
 
-        def receive():
-            clock[0] = next(timestamps)
-            if clock[0] == 151:
-                self.collector.stop_event.set()
-            return dict(verification_request(), observed_at=time.time(), rssi=-70)
+                def receive():
+                    clock[0] = next(timestamps)
+                    if clock[0] == 31 + interval * 2:
+                        self.collector.stop_event.set()
+                    return dict(verification_request(), observed_at=time.time(), rssi=-70)
 
-        def read_request(destination, sequence, kind):
-            requests.append((clock[0], kind))
-            return b"test request"
+                def read_request(destination, sequence, kind):
+                    requests.append((clock[0], kind))
+                    return b"test request"
 
-        session.receive.side_effect = receive
-        with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]), patch(
-            "collector.smlight_collector.read_request", side_effect=read_request,
-        ):
-            self.collector.run_session(session)
-        self.assertEqual(requests, [(31, "power"), (91, "inverter_ac"), (151, "power")])
+                session.receive.side_effect = receive
+                with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]), patch(
+                    "collector.smlight_collector.read_request", side_effect=read_request,
+                ):
+                    self.collector.run_session(session)
+                self.assertEqual(requests, [(31, "power"), (31 + interval, "inverter_ac"),
+                                            (31 + interval * 2, "power")])
+                snapshot = self.collector.snapshot()
+                self.assertEqual(snapshot["interval_seconds"], interval)
+                self.assertEqual(snapshot["telemetry_stale_after_seconds"], interval * len(QUERY_CYCLE) * 2)
 
     def test_leave_cancels_query_and_rejoin_resumes_with_power(self):
         session = Mock(firmware="test")
@@ -270,6 +298,38 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(requests, [(31, "power"), (151, "power")])
         self.assertEqual(self.collector.snapshot()["timeouts"], 0)
         self.assertIsNone(self.history.latest())
+
+    def test_slow_polling_allows_next_query_after_response_but_stops_after_silence(self):
+        self.collector = SmlightCollector("radio.test", self.history, interval=300)
+        session = Mock(firmware="test")
+        session.transmit.return_value = 0
+        clock = [0]
+        events = iter([(1, verification_request()), (31, None), (31.1, power_response()),
+                       (330, None), (331.5, None), (337, None), (632, None)])
+        requests = []
+
+        def receive():
+            clock[0], frame = next(events)
+            if clock[0] == 632:
+                self.collector.stop_event.set()
+            if frame:
+                return dict(frame, observed_at=1000000 + clock[0], rssi=-70,
+                            capture_sweep=1, timestamp=clock[0])
+            return None
+
+        def read_request(destination, sequence, kind):
+            requests.append((clock[0], kind))
+            return b"test request"
+
+        session.receive.side_effect = receive
+        with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]), \
+                patch("collector.smlight_collector.time.time", side_effect=lambda: 1000000 + clock[0]), \
+                patch("collector.smlight_collector.read_request", side_effect=read_request):
+            self.collector.run_session(session)
+            snapshot = self.collector.snapshot()
+        self.assertEqual(requests, [(31, "power"), (331.5, "inverter_ac")])
+        self.assertEqual(snapshot["responses"], 1)
+        self.assertEqual(snapshot["state"], "waiting")
 
     def test_failed_radio_delivery_is_retained_after_response_timeout(self):
         session = Mock(firmware="test")

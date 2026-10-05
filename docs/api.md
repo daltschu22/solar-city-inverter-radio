@@ -21,11 +21,14 @@ curl 'http://127.0.0.1:8766/api/history?range=24h'
 | `solar.lifetime_observed_at` | Unix seconds when that energy value was saved with a validated power reading |
 | `collector.connected` | Whether the collector's bridge session is connected |
 | `collector.state` | Current status, such as `live`, `stale`, `discovering`, or `standby` |
-| `collector.interval_seconds` | Interval between radio measurement queries; normally 60 |
+| `collector.interval_seconds` | Configured interval between radio measurement queries; defaults to 60 |
+| `collector.reconnect_interval_seconds` | Delay before retrying a failed radio session; defaults to 15 |
+| `collector.telemetry_stale_after_seconds` | Age threshold for diagnostic groups, scaled with the polling interval |
 | `collector.requests`, `collector.responses`, `collector.timeouts` | Polling counters for this collector process |
 | `collector.telemetry` | Identity and diagnostic groups, each with values, observation time, and a stale flag |
 
-Power normally arrives every two minutes. Retained values stay visible during
+Power normally arrives every two polling intervals (two minutes by default).
+Retained values stay visible during
 outages, so a number alone is not a fresh measurement. Check its timestamp and
 collector status. Zero is a valid measurement only when actually reported;
 missing values are `null`.
@@ -33,7 +36,8 @@ missing values are `null`.
 Energy is queried less often than power. Its last saved value has its own
 timestamp, which does not advance just because a newer power-only reading
 arrives. Energy is attached to a power reading only when the energy response was
-at most two minutes old, so `lifetime_observed_at` is the time of that saved power
+at most two polling intervals old (two minutes by default), so
+`lifetime_observed_at` is the time of that saved power
 reading, not an exact timestamp for the original energy response.
 
 The [Home Assistant example](home-assistant.md) treats power older than three

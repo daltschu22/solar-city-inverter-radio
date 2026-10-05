@@ -72,12 +72,27 @@ class CollectorApiTests(unittest.TestCase):
                 collector.main()
 
     def test_history_includes_configured_poll_interval_for_chart_gaps(self):
-        for interval in (15, 60):
+        for interval in (15, 60, 300):
             with self.subTest(interval=interval):
                 self.collector.interval = interval
                 status, body = self.request("GET", "/api/history?range=1h")
                 self.assertEqual(status, 200)
                 self.assertEqual(json.loads(body)["poll_interval_seconds"], interval)
+
+    def test_startup_passes_configured_timing_to_radio_collector(self):
+        from collector.config import RadioConfig
+        configuration = RadioConfig(host="radio.example.invalid", configured=True,
+                                    poll_interval_seconds=300, reconnect_interval_seconds=45)
+        with patch("collector.config.require_configured", return_value=configuration), \
+                patch.object(collector, "SOLAR_HISTORY_PATH", self.history.path), \
+                patch.object(collector, "ThreadingHTTPServer"), \
+                patch.object(collector.signal, "signal"), \
+                patch("collector.smlight_collector.SmlightCollector") as radio:
+            collector.main()
+        self.assertEqual(radio.call_args.kwargs["interval"], 300)
+        self.assertEqual(radio.call_args.kwargs["reconnect_interval"], 45)
+        radio.return_value.start.assert_called_once()
+        radio.return_value.stop.assert_called_once()
 
     def test_collector_api_never_serves_dashboard_or_local_files(self):
         for path in ("/", "/index.html", "/app.js", "/.env"):

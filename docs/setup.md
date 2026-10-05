@@ -199,8 +199,29 @@ Additional environment settings:
 | `SOLAR_HISTORY_PATH` | `data/solar-history.sqlite3` in the repository root |
 | `SOLAR_API_BIND` | `127.0.0.1`; collector API listening address |
 | `SOLAR_API_PORT` | `8766`; collector API port |
+| `SOLAR_POLL_INTERVAL_SECONDS` | `60`; seconds between measurement queries, integer `15`–`3600` |
+| `SOLAR_RECONNECT_INTERVAL_SECONDS` | `15`; seconds before retrying a failed radio session, integer `1`–`3600` |
 | `SOLAR_DASHBOARD` | `false`; set `true` to also run the dashboard with the container's default command |
 | `SOLAR_LATITUDE`, `SOLAR_LONGITUDE` | Unset; optional, supply both for nighttime inference |
+
+To tune collection, add the desired values to the generated `.env` or service
+environment and restart the collector. For example:
+
+```dotenv
+SOLAR_POLL_INTERVAL_SECONDS=120
+SOLAR_RECONNECT_INTERVAL_SECONDS=30
+```
+
+The polling interval is the time between individual measurement queries. Power
+alternates with energy and diagnostics, so `120` means a power reading about
+every four minutes. Energy queries are at most eight polling intervals apart
+in the normal cycle. The API reports the configured interval, and the dashboard
+uses it for freshness and chart gaps. See the [Home Assistant guide](home-assistant.md)
+for its sensor age thresholds.
+
+The reconnect interval applies after a radio session fails, such as a lost TCP
+connection. It does not schedule radio resets. Coordinator replies and the
+15-second link-status schedule run independently of measurement polling.
 
 Coordinates stay in your runtime environment. Nighttime inference never creates
 measurements or changes inverter settings. It requires a recent low-power reading

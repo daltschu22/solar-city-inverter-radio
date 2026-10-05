@@ -57,6 +57,22 @@ assert Coordinator().assigned_address == 0x6789
             config = load_config()
         self.assertTrue(config.configured)
         self.assertEqual((config.port, config.initial_address), (6638, 0x2345))
+        self.assertEqual((config.poll_interval_seconds, config.reconnect_interval_seconds), (60, 15))
+
+    def test_timing_environment_settings_are_optional_and_bounded(self):
+        for poll, reconnect in ((15, 1), (120, 30), (3600, 3600)):
+            with self.subTest(poll=poll, reconnect=reconnect), patch.dict(os.environ, {
+                    **self.env, "SOLAR_POLL_INTERVAL_SECONDS": str(poll),
+                    "SOLAR_RECONNECT_INTERVAL_SECONDS": str(reconnect)}):
+                config = load_config()
+                self.assertEqual((config.poll_interval_seconds, config.reconnect_interval_seconds),
+                                 (poll, reconnect))
+        for name, invalid in (("SOLAR_POLL_INTERVAL_SECONDS", ("", "0", "-1", "14", "3601", "1.5", "nan", "inf")),
+                              ("SOLAR_RECONNECT_INTERVAL_SECONDS", ("", "0", "-1", "3601", "1.5", "nan", "inf"))):
+            for value in invalid:
+                with self.subTest(name=name, value=value), patch.dict(os.environ, {**self.env, name: value}):
+                    with self.assertRaisesRegex(ValueError, name):
+                        load_config()
 
     def test_decimal_and_hexadecimal_numbers_are_supported(self):
         with patch.dict(os.environ, {**self.env, "SOLAR_RADIO_CHANNEL": "0x19", "SOLAR_PAN_ID": "4660"}):

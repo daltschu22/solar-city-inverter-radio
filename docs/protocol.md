@@ -155,18 +155,28 @@ power, inverter_ac, power, energy, power, inverter_dc, power, energy,
 power, meter_ac, power, common1, power, common2, power, energy
 ```
 
-One query starts every 60 seconds, with at most one outstanding request and a
-five-second response window. Power normally updates every 120 seconds. Each
+One query starts every `SOLAR_POLL_INTERVAL_SECONDS` (default `60`), with at most
+one outstanding request and a five-second response window. Power normally updates
+every two polling intervals. Each
 ACK-requested frame permits three host-managed retries after delivery statuses
 17/18, delayed by 0.1, 0.2, and 0.4 seconds. Retries preserve the identical frame.
-A transport failure reconnects after 15 seconds and repeats the passive conflict
-check. Poll timeouts alone do not trigger radio resets.
+A transport failure reconnects after `SOLAR_RECONNECT_INTERVAL_SECONDS` (default
+`15`) and repeats the passive conflict check. Poll timeouts alone do not trigger
+radio resets. Coordinator replies and link-status timing are independent of
+these settings.
+
+Measurement queries require identifiable inverter traffic within one polling
+interval plus five seconds of scheduling slack, with a minimum window of 60 seconds.
+This lets the previous response
+support a slower query cadence while pausing queries after unanswered requests.
+Network-neighbor freshness and leave/rejoin handling keep their own timing rules.
 
 Accepted responses must match the known inverter and collector, direct source,
 PAN, profile, cluster, endpoints, expected length, Modbus unit/function, and CRC.
 Frames flagged with receive errors, bad FCS, or unsupported fragmentation are
 rejected. Only power responses create production history rows. Cached energy is
-attached to a power row only while at most two minutes old.
+attached to a power row only while at most two polling intervals old (two minutes
+by default).
 
 The supported decoder is tied to this register map. Confirm identity, model IDs,
 addresses, scale factors, and invalid-value handling before adapting another

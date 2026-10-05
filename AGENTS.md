@@ -18,6 +18,12 @@ installation.
   both processes. API requests do not trigger inverter polls.
 - The database belongs in persistent storage: `/data/solar-history.sqlite3`
   inside the container, configurable with `SOLAR_HISTORY_PATH`.
+- Optional timing settings are `SOLAR_POLL_INTERVAL_SECONDS` (default `60`, range
+  `15`–`3600`) and `SOLAR_RECONNECT_INTERVAL_SECONDS` (default `15`, range `1`–`3600`).
+  Add them to `.env` or the service environment and restart collection. Discovery
+  exports radio identity settings; timing values are a separate user preference.
+  Power normally updates every two polling intervals. Follow the Home Assistant
+  guide when adjusting its sensor freshness thresholds.
 
 ## Helping someone set it up
 

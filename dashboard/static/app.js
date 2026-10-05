@@ -167,12 +167,14 @@ for (const [key, title, fields] of telemetryFields) {
   telemetryElements.set(key, { age, outputs });
 }
 
-function renderTelemetry(telemetry = {}, standby = false) {
+function renderTelemetry(telemetry = {}, standby = false, staleAfterSeconds = 480) {
+  const freshnessSeconds = hasNumber(staleAfterSeconds) && Number(staleAfterSeconds) > 0
+    ? Number(staleAfterSeconds) : 480;
   for (const [key, , fields] of telemetryFields) {
     const group = telemetry[key] || {};
     const { age, outputs } = telemetryElements.get(key);
     const overdue = group.stale || !hasNumber(group.observed_at)
-      || Date.now() / 1000 - group.observed_at > 480;
+      || Date.now() / 1000 - group.observed_at > freshnessSeconds;
     age.textContent = hasNumber(group.observed_at)
       ? `${overdue ? "Last verified" : "Updated"} ${formatRelative(group.observed_at)}`
       : "Awaiting reading";
@@ -196,7 +198,7 @@ function renderLive(data) {
   const collector = data.collector || {};
   const state = collector.state || "disconnected";
   const standby = state === "standby";
-  renderTelemetry(collector.telemetry, standby);
+  renderTelemetry(collector.telemetry, standby, collector.telemetry_stale_after_seconds);
   const timestamp = hasNumber(data.timestamp) ? Number(data.timestamp) : null;
 
   currentPower.textContent = formatPower(data.solar_w);

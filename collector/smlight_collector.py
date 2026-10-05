@@ -169,8 +169,9 @@ def measurement(frame, values):
 
 class SmlightCollector:
     def __init__(self, host, history, port=6638, interval=60, session_factory=RadioSession,
-                 night_schedule=None):
+                 night_schedule=None, reconnect_interval=15):
         self.host, self.port, self.interval = host, port, interval
+        self.reconnect_interval = reconnect_interval
         self.history = history
         self.telemetry = TelemetryStore(history.path)
         self.session_factory = session_factory
@@ -185,7 +186,8 @@ class SmlightCollector:
         self.energy_at = 0
         self.status = {
             "state": "connecting", "host": host, "channel": CHANNEL,
-            "interval_seconds": interval, "last_poll_at": None, "last_reading_at": None,
+            "interval_seconds": interval, "reconnect_interval_seconds": reconnect_interval,
+            "last_poll_at": None, "last_reading_at": None,
             "last_packet_at": None, "inverter_address": None, "rssi": None,
             "requests": 0, "responses": 0, "timeouts": 0, "last_error": None,
             "query_tx_failures": 0, "last_query_kind": None, "last_query_tx_status": None,
@@ -208,7 +210,8 @@ class SmlightCollector:
         if (status["state"] in {"live", "waiting"} and at is not None
                 and status["age_seconds"] > self.interval * 3):
             status["state"] = "stale"
-        status["telemetry"] = self.telemetry.snapshot(stale_after=self.interval * len(QUERY_CYCLE) * 2)
+        status["telemetry_stale_after_seconds"] = self.interval * len(QUERY_CYCLE) * 2
+        status["telemetry"] = self.telemetry.snapshot(stale_after=status["telemetry_stale_after_seconds"])
         status["standby_until"] = None
         dc = status["telemetry"].get("inverter_dc", {}).get("values", {})
         fault = dc.get("fault_bits", 0) or dc.get("event_bits_2", 0) or dc.get("operating_state") == "Fault"
@@ -250,7 +253,7 @@ class SmlightCollector:
         if not values:
             return False
         if kind == "power":
-            if self.energy is not None and frame["observed_at"] - self.energy_at <= 120:
+            if self.energy is not None and 0 <= frame["observed_at"] - self.energy_at <= self.interval * 2:
                 values["lifetime_wh"] = self.energy
             reading = measurement(frame, values)
             self.history.record([reading])
@@ -353,7 +356,8 @@ class SmlightCollector:
                 pending = None
             if now >= next_poll and pending is None:
                 next_poll = now + self.interval
-                if live is None or time.time() - live["observed_at"] > 60:
+                # Allow one response window of scheduling slack between polls.
+                if live is None or time.time() - live["observed_at"] > max(60, self.interval + 5):
                     self.update(state="waiting", last_error="Waiting for the inverter radio")
                     continue
                 pending = QUERY_CYCLE[query_index % len(QUERY_CYCLE)]
@@ -394,5 +398,5 @@ class SmlightCollector:
                         session.close()
                     except Exception as exc:
                         print("Solar radio cleanup:", str(exc), flush=True)
-            self.stop_event.wait(15)
+            self.stop_event.wait(self.reconnect_interval)
         self.update(state="disconnected", connected=False)

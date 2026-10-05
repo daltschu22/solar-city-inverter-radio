@@ -190,8 +190,13 @@ for stale or missing readings. This works with the dashboard process stopped.
 
 ## Data and operation
 
-One read-only query is sent every 60 seconds, alternating production power with
-energy and diagnostics. The coordinator also handles event-driven replies and
+By default, one read-only query is sent every 60 seconds, alternating production
+power with energy and diagnostics. Set `SOLAR_POLL_INTERVAL_SECONDS` to tune it;
+power normally updates every two polling intervals. `SOLAR_RECONNECT_INTERVAL_SECONDS`
+sets the delay after a failed radio session (default `15`). Both are optional
+environment variables; see [configuration](docs/setup.md#environment-variables).
+
+The coordinator also handles event-driven replies and
 sends link status every 15 seconds. These maintenance packets are separate from
 measurement polling. Queries are serialized, and MAC delivery retries are bounded.
 

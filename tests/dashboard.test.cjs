@@ -132,3 +132,20 @@ test("freshness follows the configured poll cadence without hiding old readings"
     collector: {state: "stale", interval_seconds: 15}})`);
   assert.equal(nodes.get("#power-label").textContent, "Last verified output");
 });
+
+test("slow collector cadence controls diagnostic freshness and chart gaps", () => {
+  const { run, nodes } = dashboard();
+  run(`renderLive({solar_w: 500, timestamp: Date.now()/1000 - 601,
+    collector: {state: "live", interval_seconds: 300, telemetry_stale_after_seconds: 9600,
+      telemetry: {inverter_ac: {observed_at: Date.now()/1000 - 1000, stale: false, values: {}}}}})`);
+  assert.equal(nodes.get("#power-label").textContent, "Producing now");
+  assert.match(run('telemetryElements.get("inverter_ac").age.textContent'), /^Updated /);
+  run(`renderTelemetry({inverter_ac: {observed_at: Date.now()/1000 - 9601, stale: false}}, false, 9600)`);
+  assert.match(run('telemetryElements.get("inverter_ac").age.textContent'), /^Last verified /);
+  run(`renderTelemetry({inverter_ac: {observed_at: Date.now()/1000, stale: true}}, false, 9600)`);
+  assert.match(run('telemetryElements.get("inverter_ac").age.textContent'), /^Last verified /);
+  const history = run(`prepareHistory([
+    {timestamp: 1000, solar_w: 500}, {timestamp: 1601, solar_w: 501},
+    {timestamp: 2802, solar_w: 502}], false, 300)`);
+  assert.equal(history.gaps.length, 1);
+});

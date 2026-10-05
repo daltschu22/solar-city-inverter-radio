@@ -122,7 +122,7 @@ The collector checks identity, addressing, application fields, expected length,
 and CRC before accepting a reading. It rejects radio errors and unsupported
 fragmentation. Missing readings remain gaps rather than becoming invented zeroes.
 
-The schedule is deliberately simple: one measurement query per minute, with
+The default schedule is one measurement query per minute, with
 power alternating with energy and diagnostics. Power normally updates every two
 minutes. Network maintenance continues independently, and packet delivery retries
 are bounded. The integration reads inverter registers; it does not change inverter

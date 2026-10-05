@@ -16,6 +16,8 @@ class RadioConfig:
     collector_eui: str = "0200000000000001"
     inverter_eui: str = "0200000000000002"
     initial_address: int = 0x2345
+    poll_interval_seconds: int = 60
+    reconnect_interval_seconds: int = 15
     configured: bool = False
 
 
@@ -28,6 +30,8 @@ ENV_FIELDS = {
     "collector_eui": "SOLAR_COLLECTOR_EUI",
     "inverter_eui": "SOLAR_INVERTER_EUI",
     "initial_address": "SOLAR_INITIAL_ADDRESS",
+    "poll_interval_seconds": "SOLAR_POLL_INTERVAL_SECONDS",
+    "reconnect_interval_seconds": "SOLAR_RECONNECT_INTERVAL_SECONDS",
 }
 
 
@@ -74,6 +78,8 @@ def load_config():
         extended_pan_id=number("extended_pan_id", None, 1, 0xFFFFFFFFFFFFFFFE),
         collector_eui=collector, inverter_eui=inverter,
         initial_address=number("initial_address", 0x2345, 1, 0xFFF7),
+        poll_interval_seconds=number("poll_interval_seconds", 60, 15, 3600),
+        reconnect_interval_seconds=number("reconnect_interval_seconds", 15, 1, 3600),
         configured=True,
     )
 

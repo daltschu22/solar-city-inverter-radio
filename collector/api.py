@@ -131,7 +131,9 @@ def main():
     print(f"Solar history: {SOLAR_HISTORY_PATH}")
     from collector.smlight_collector import SmlightCollector
     smlight_collector = SmlightCollector(host, solar_history, port=configuration.port,
-                                       night_schedule=night_schedule)
+                                       interval=configuration.poll_interval_seconds,
+                                       night_schedule=night_schedule,
+                                       reconnect_interval=configuration.reconnect_interval_seconds)
     smlight_collector.start()
     print(f"Radio poller: SMLIGHT at {host}:{configuration.port}")
     try:
