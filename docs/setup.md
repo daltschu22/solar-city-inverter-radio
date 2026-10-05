@@ -159,9 +159,8 @@ Collection is now set up. To add a web interface, follow
 
 ## Run the collector in a container
 
-The container runs the collector and API by default. To add the
-dashboard, set `SOLAR_DASHBOARD=true` when starting the container and publish
-port `8765` too; see the [example](dashboard.md#combined-container).
+The image can run the collector alone or the collector with the dashboard.
+Choose either option below after building the image.
 
 Create a network for consumers and a persistent data volume, then build and run
 the collector. These commands use Docker; you can substitute `podman` if that
@@ -177,6 +176,11 @@ docker volume create solar-city-inverter-radio-data
 
 ### Start the container
 
+Use the `.env` generated and validated above. Stop any collector already using
+the SMLIGHT, then run **one** of the following commands.
+
+#### Collector only
+
 ```sh
 docker run --rm --name solar-city-collector --network solar-city \
   -p 127.0.0.1:8766:8766 \
@@ -185,16 +189,34 @@ docker run --rm --name solar-city-collector --network solar-city \
   solar-city-inverter-radio
 ```
 
-Use the `.env` generated and validated above. Keep a persistent data volume and
-stop the foreground collector before starting its container replacement. The
-HTTP port is published to host loopback only. Add your own service management or
-reverse proxy according to your environment.
+Read the API at <http://127.0.0.1:8766/api/live>.
+
+#### Collector with dashboard
+
+Set `SOLAR_DASHBOARD=true` and publish the dashboard's port:
+
+```sh
+docker run --rm --name solar-city-collector --network solar-city --stop-timeout 30 \
+  -p 127.0.0.1:8766:8766 \
+  -p 127.0.0.1:8765:8765 \
+  -e SOLAR_DASHBOARD=true \
+  --env-file .env \
+  -v solar-city-inverter-radio-data:/data \
+  solar-city-inverter-radio
+```
+
+Open <http://127.0.0.1:8765> for the dashboard. The collector API is also available
+on port `8766`. Stopping this container stops both programs.
+
+Both options save history in the same persistent volume and publish HTTP ports
+on host loopback only. Add your own service management or reverse proxy according
+to your environment.
 
 Keep `.env` private. Do not bake installation values into the image.
 
-Containers start with `python -m runtime`. Rebuild the image after updating and
-keep the data volume across container replacements. The [dashboard guide](dashboard.md)
-covers the separate viewer and optional combined container.
+Rebuild the image after updating and keep the data volume across container
+replacements. The [dashboard guide](dashboard.md) covers running the viewer
+separately and explains how the combined container works.
 
 ## Environment variables
 

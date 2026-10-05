@@ -68,25 +68,9 @@ Container DNS resolves `solar-city-collector` on the shared network. Using
 
 ## Combined container
 
-Set `SOLAR_DASHBOARD=true` when starting the container to run both programs.
-Leave the variable unset (or set it to `false`) to run only the collector. Both
-modes expose the collector API on port `8766`; the dashboard adds port `8765`.
-
-Complete [collector setup](setup.md) to generate and validate `.env`.
-Follow [Build the image and prepare storage](setup.md#build-the-image-and-prepare-storage).
-Stop any collector that owns the bridge, then start this combined container:
-
-```sh
-docker run --rm --name solar-city-combined --stop-timeout 30 \
-  -p 127.0.0.1:8766:8766 \
-  -p 127.0.0.1:8765:8765 \
-  -e SOLAR_DASHBOARD=true \
-  --env-file .env \
-  -v solar-city-inverter-radio-data:/data \
-  solar-city-inverter-radio
-```
-
-Open <http://127.0.0.1:8765>. History is stored in the mounted `/data` volume.
+Use the [collector with dashboard command](setup.md#collector-with-dashboard)
+in the setup guide. It enables `SOLAR_DASHBOARD=true` and publishes the dashboard
+on port `8765` alongside the collector API on port `8766`.
 
 The container starts two Python processes:
 
@@ -111,7 +95,7 @@ Closing the browser leaves collection running. Stopping the container stops
 both processes. If either process exits, the launcher stops the other and exits
 with an error, so your container service manager can restart the whole service.
 It forwards termination signals, waits up to 15 seconds for graceful shutdown,
-and reaps both processes. The example allows 30 seconds before the container
+and reaps both processes. The setup command allows 30 seconds before the container
 runtime forces a stop.
 
 [Home Assistant](home-assistant.md) and other API consumers use the
