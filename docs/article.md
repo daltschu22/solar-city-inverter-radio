@@ -141,11 +141,14 @@ covers the exact configuration fields and startup sequence.
 The main steps are:
 
 1. Confirm the inverter and radio match the supported legacy setup.
-2. Obtain your channel, operating PAN IDs, original collector EUI, and inverter EUI
-   from radio configuration or suitable working-network captures.
-3. Configure the SMLIGHT RCP bridge and put those values in `radio.local.json`.
-4. Power off the original collector and give the Python collector exclusive access
-   to the radio bridge.
+2. Configure the SMLIGHT RCP bridge, then use the included
+   [discovery script and report-to-config guide](https://github.com/daltschu22/solar-city/blob/main/docs/discovery.md)
+   to gather your channel, operating PAN IDs, expected collector EUI, and inverter EUI.
+   Existing captures or accessible radio configuration are also useful sources.
+3. Review the evidence, put the observed values in `radio.local.json`, and validate
+   the file with `python config.py`.
+4. Power off the original collector, if present, and give the Python collector
+   exclusive access to the radio bridge after capture has finished.
 5. Validate fresh readings, then observe startup and overnight recovery.
 
 A capture used to inspect the application exchange needs to include unicast
@@ -153,7 +156,7 @@ traffic. Stock TI RCP promiscuous reception can miss ACK-requested unicasts, so 
 quiet capture is not conclusive. An independent, verified sniffer can help during
 initial characterization; it is not needed for normal operation.
 
-The public repository contains fictional identities and synthetic telemetry.
+The repository contains fictional identities and synthetic telemetry.
 Installation configuration, captures, databases, and logs stay out of version
 control. The dashboard binds to localhost by default because its API contains
 information about the local equipment.

@@ -46,7 +46,9 @@ operating value. Channel displays may be hexadecimal: `0x14` is decimal 20.
 
 Start with the [discovery tool](discovery.md) if the addresses are unknown. It
 can learn from inverter-originated traffic and also analyze a capture of a working
-original collector. Accessible radio configuration is another source. Beacons contain the extended PAN; IEEE
+original collector. Accessible radio configuration is another source. Follow the
+[report-to-config walkthrough](discovery.md#apply-reviewed-values) to map the
+observed fields into `radio.local.json`. Beacons contain the extended PAN; IEEE
 addresses appear in suitable network headers and device announcements. The
 collector's short address is `0x0000`. The inverter's short address may change
 and is learned at runtime.

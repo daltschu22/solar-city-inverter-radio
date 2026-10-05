@@ -116,8 +116,91 @@ The report deliberately makes that distinction.
 
 ## Apply reviewed values
 
-When the candidate and network have been verified, copy `config.example.json` to
-`radio.local.json`. Enter the five recovered values plus your bridge host and
-port. A complete report is not applied automatically. Confirm the supported
-hardware, unsecured network, and stack profile before starting the collector.
-Follow the [setup guide](setup.md) for validation and startup.
+Open `captures/discovery.json` in a local editor. Under `networks`, find the
+network containing your inverter, then select its entry in `inverter_candidates`.
+Do not assume the first network or candidate is yours: nearby equipment can
+appear in a capture. Check the supported inverter model and, when available,
+compare the radio EUI with its label or known radio configuration.
+
+Start with that candidate's `inverter_only` object. Each setting has a `status`
+and a `value`. For example, this **fictional** observation:
+
+```json
+{
+  "pan_id": {"status": "observed", "value": "0x1234", "evidence": []}
+}
+```
+
+means the corresponding config entry is `"pan_id": "0x1234"`. Copy only the
+value, not the surrounding evidence object. Use your report's values, not this
+example. Real observations include the supporting frames in `evidence`.
+
+| Field in `radio.local.json` | Where to get the value |
+| --- | --- |
+| `host` | Your bridge hostname or IP, as used with `--host` |
+| `port` | Your bridge's TCP port, normally the integer `6638` |
+| `channel` | Selected candidate's `inverter_only.channel.value` |
+| `pan_id` | Selected candidate's `inverter_only.pan_id.value` |
+| `extended_pan_id` | Selected candidate's `inverter_only.extended_pan_id.value` |
+| `inverter_eui` | Selected candidate's `inverter_only.inverter_eui.value` |
+| `collector_eui` | Selected candidate's `inverter_only.collector_eui.value` |
+
+The full path starts at `networks`, then the chosen `inverter_candidates` entry.
+Use a radio field only when its status is `observed` and its value is non-null.
+If an inverter-only field is unknown, the same candidate's `whole_network` view
+may contain an observed value from other traffic on that network. Review its
+evidence before using it. Conflicts or disagreements between the views require
+investigation; do not silently choose one value or fill in a guessed default.
+
+The collector EUI is the identity the inverter expects, even when the original
+box is unavailable. Do not substitute your new bridge's factory EUI. The inverter
+EUI is its permanent 64-bit radio address, not a changing 16-bit short address or
+the inverter's equipment serial number. Normally omit `initial_address`; the
+collector learns the inverter's current short address at runtime.
+
+Confirm compatibility as well as identity. The selected network's
+`network_fields.stack_profile` should be observed as `0`, and `security` should
+show unsecured application traffic. Secured traffic or an unknown/conflicting
+stack profile needs further inspection before using this implementation. A
+complete set of addresses alone does not establish protocol compatibility.
+
+Create the config in the repository directory:
+
+```sh
+cp config.example.json radio.local.json
+```
+
+Edit it using the mapping above. Preserve JSON types: `channel` and `port` are
+integers; PAN IDs are quoted `0x`-prefixed hexadecimal strings; EUIs are quoted
+16-digit hexadecimal strings without colons. Use the report's display order;
+do not reverse the bytes. The script never applies a report automatically.
+
+Then validate the completed file without opening a radio connection:
+
+```sh
+.venv/bin/python config.py
+```
+
+By default the app reads `radio.local.json` from the working directory. If you
+use `SOLAR_CONFIG`, set it to the absolute path of the file you intend to validate
+and run. Config validation checks the file's format, not whether the inverter
+will connect.
+
+Once capture has finished, power off the original collector if you have one,
+give the replacement exclusive access to the bridge, and follow
+[Start and verify](setup.md#start-and-verify). Keep the report, captures, and
+`radio.local.json` private; the repository ignores them under the paths above.
+
+## If the report is incomplete
+
+| Observation | Next step |
+| --- | --- |
+| No candidate, or only anonymous beacon searches | Capture longer on a channel with traffic, preferably while the inverter is operating. A quiet capture does not prove that it cannot reconnect. |
+| Candidate found, but extended PAN unknown | Try a longer capture on that channel or the optional `--beacon-request`. A joined router may return a beacon containing the extended PAN. |
+| Inverter or collector EUI unknown | Obtain packets carrying the permanent addresses. Check the unicast reception limitation above; a longer capture cannot fix a receiver that omits the needed frames. |
+| Any field is `conflict`, or short-address bindings are ambiguous | Inspect the cited frames and separate captures from different operating networks or periods. Do not apply a conflicting identity. |
+
+Use a new `--output` filename for each attempt. If the inverter has fully left
+its network and never exposes its former settings, this tool cannot reconstruct
+them from anonymous searches. Cold commissioning from that state remains
+unverified; unknown fields stay unknown.

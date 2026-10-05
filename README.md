@@ -35,36 +35,58 @@ Encrypted networks, other inverter families, multiple inverters, and pairing wit
 a completely new collector identity are not supported or validated here.
 
 The working method **reuses the original collector's EUI-64 and network settings**.
-Those values must come from your equipment or a suitable capture. The original
-collector must remain powered off while this replacement runs. The project does
-not yet provide automatic commissioning when those settings are unknown.
+The included [discovery tool](docs/discovery.md) can learn those values from
+inverter traffic without a site config or packets from the original collector.
+This has been demonstrated on an operating replacement network; discovery from
+a fully unjoined inverter remains unverified. If you have the original collector,
+keep it powered off while this replacement runs.
 
 ## Quick start
 
 1. Configure the SLZB-06U for the tested RCP firmware and network serial bridge.
    See the [setup guide](docs/setup.md) for firmware details and obtaining your
    network settings.
-2. Install and configure the application:
+2. Install the application:
 
    ```sh
    git clone https://github.com/daltschu22/solar-city.git
    cd solar-city
    python3 -m venv .venv
    .venv/bin/pip install -r requirements.txt
+   ```
+
+3. If your radio settings are unknown, gather them before creating the config.
+   Use a spare receiver or stop any program using this bridge; discovery resets
+   and configures the receiver. Replace `YOUR_BRIDGE_HOST` with its hostname or IP:
+
+   ```sh
+   .venv/bin/python tools/discover_radio.py \
+     --host YOUR_BRIDGE_HOST \
+     --exclusive-radio \
+     --output captures/discovery.json
+   ```
+
+   This listens across all channels for about five minutes. Follow the
+   [report-to-config walkthrough](docs/discovery.md#apply-reviewed-values) to
+   identify your inverter and check which settings were observed. The guide also
+   covers incomplete reports and analyzing existing captures without a radio.
+4. Copy the template, then edit `radio.local.json`:
+
+   ```sh
    cp config.example.json radio.local.json
    ```
 
-3. Edit `radio.local.json`. Every required radio field is intentionally blank or
-   a placeholder. Supply your bridge hostname, channel, PAN IDs, original collector
-   EUI, and inverter EUI. Do not copy identities from another installation.
-4. Validate without touching the radio:
+   Supply your bridge hostname, channel, PAN IDs, expected original collector
+   EUI, and inverter EUI. Required fields are blank or placeholders; use your own
+   reviewed settings. Capture reports and local configs are ignored by Git.
+5. Validate without touching the radio:
 
    ```sh
    .venv/bin/python config.py
    ```
 
-5. Power off the original collector and stop any other program connected to the
-   SMLIGHT bridge. Then start the replacement:
+6. Power off the original collector, if present, and stop any other program
+   connected to the SMLIGHT bridge. Then start the replacement:
 
    ```sh
    .venv/bin/python server.py
