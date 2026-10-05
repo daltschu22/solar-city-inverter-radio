@@ -41,6 +41,15 @@ This has been demonstrated on an operating replacement network; discovery from
 a fully unjoined inverter remains unverified. If you have the original collector,
 keep it powered off while this replacement runs.
 
+### Identify the inverter
+
+<img src="docs/images/power-one-pvi-5000-outd-us-z-front.jpg" alt="Front of the tested inverter, with upper cooling fins, a display strip, SolarCity branding, and a lower PV DC disconnect" width="360">
+
+Front of the tested **Power-One PVI-5000-OUTD-US-Z**, with SolarCity branding
+and the PV DC disconnect below. Use the enclosure as a visual reference, then
+confirm the exact model on your equipment's label and check radio compatibility
+against the table above. A matching enclosure alone does not confirm support.
+
 ## Quick start
 
 1. Configure the SLZB-06U for the tested RCP firmware and network serial bridge.

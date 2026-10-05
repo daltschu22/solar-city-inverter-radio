@@ -5,6 +5,7 @@ This is a guardrail, not a replacement for reviewing each publication diff.
 It deliberately contains no private identifiers to search for.
 """
 
+import hashlib
 import ipaddress
 from pathlib import Path
 import re
@@ -14,6 +15,13 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 IGNORED = {".git", ".venv", "__pycache__", "data", "captures", "dist"}
+# These exact files were visually reviewed and stripped of embedded metadata.
+# A changed image needs another review; an extension alone is not approval.
+REVIEWED_IMAGES = {
+    "docs/images/power-one-pvi-5000-outd-us-z-front.jpg":
+        "4e40ea9c5a48528e18fca71b1739125451aa13ffaf3a64a20ca30aa392d86d12",
+}
+IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".heic", ".heif"}
 PATTERNS = [
     ("private key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
     ("GitHub token", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})\b")),
@@ -42,7 +50,16 @@ def check(paths):
                 or IGNORED.intersection(relative.parts)):
             failures.append(f"{relative}: private/runtime artifact tracked")
             continue
-        content = path.read_text(encoding="utf-8")
+        if path.suffix.lower() in IMAGE_SUFFIXES:
+            expected = REVIEWED_IMAGES.get(relative.as_posix())
+            if expected is None or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+                failures.append(f"{relative}: unreviewed or changed image; review privacy and strip metadata")
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            failures.append(f"{relative}: unreviewed binary artifact")
+            continue
         # Upstream bundled code is reviewed by its hash and retained notices.
         if "vendor" in relative.parts:
             continue
