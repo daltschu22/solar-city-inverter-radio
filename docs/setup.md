@@ -1,4 +1,4 @@
-# Reproduce the Power-One radio integration
+# Replace a SolarCity monitoring collector
 
 This guide covers a single legacy Power-One/Digi installation using an existing
 collector identity. It assumes the inverter already contains a working radio.
@@ -153,13 +153,13 @@ HTTP health check, to judge recovery.
 The image includes the application and static assets. Build from the repository:
 
 ```sh
-podman build -t power-one-radio -f Containerfile .
-podman volume create power-one-radio-data
-podman run --rm --name power-one-radio \
+podman build -t solar-city -f Containerfile .
+podman volume create solar-city-data
+podman run --rm --name solar-city \
   -p 127.0.0.1:8765:8765 \
   --mount type=bind,src="$PWD/radio.local.json",dst=/config/radio.local.json,ro \
-  -v power-one-radio-data:/data \
-  power-one-radio
+  -v solar-city-data:/data \
+  solar-city
 ```
 
 Make the config readable by container UID `10001`; on a single-user host, a

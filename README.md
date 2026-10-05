@@ -1,7 +1,11 @@
-# Power One Radio
+# SolarCity Collector Replacement
 
-A local replacement collector for a **Power-One PVI-5000-OUTD-US-Z with a
-SolarCity-era Digi XBee radio**, using a SMLIGHT SLZB-06U and Python.
+A local replacement for the **SolarCity / Tesla solar monitoring box**, using a
+SMLIGHT SLZB-06U and Python.
+
+**Tested inverter: Power-One PVI-5000-OUTD-US-Z**, equipped with its SolarCity-era
+Digi XBee radio. Power-One is the inverter manufacturer; SolarCity supplied the
+monitoring setup this project replaces.
 
 The collector maintains the inverter's existing radio network, answers startup
 verification, and reads SunSpec measurements over Modbus RTU. A small local
@@ -43,8 +47,8 @@ not yet provide automatic commissioning when those settings are unknown.
 2. Install and configure the application:
 
    ```sh
-   git clone https://github.com/daltschu22/power-one-radio.git
-   cd power-one-radio
+   git clone https://github.com/daltschu22/solar-city.git
+   cd solar-city
    python3 -m venv .venv
    .venv/bin/pip install -r requirements.txt
    cp config.example.json radio.local.json

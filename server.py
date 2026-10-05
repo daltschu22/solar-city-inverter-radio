@@ -882,7 +882,7 @@ def main():
 
     signal.signal(signal.SIGTERM, request_shutdown)
     signal.signal(signal.SIGINT, request_shutdown)
-    print(f"Power One Radio: http://127.0.0.1:{port}")
+    print(f"SolarCity Collector Replacement: http://127.0.0.1:{port}")
     print(f"Solar history: {SOLAR_HISTORY_PATH}")
     from smlight_collector import SmlightCollector
     smlight_collector = SmlightCollector(host, solar_history, port=configuration.port,
