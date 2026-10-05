@@ -14,14 +14,14 @@ inverter registers and does not require a Tesla account or cloud connection.
 
 **The collector runs on its own.** Use its API with your own software or Home
 Assistant, or run the included dashboard as a separate, optional process.
-The [combined container](docs/dashboard.md#combined-container) starts both
-programs together when you want one container.
+The container runs the collector by default. Set `SOLAR_DASHBOARD=true` to
+start the dashboard in that same container.
 
 | Component | Command / interface | Role |
 | --- | --- | --- |
 | Collector | `python collector.py`, port `8766` | Owns the SMLIGHT connection, gathers readings, saves history, serves JSON |
 | Optional dashboard | `python server.py`, port `8765` | Reads the collector API and displays the readings |
-| Combined container | Build with `--target combined`, port `8765` | Starts the collector and dashboard together; the dashboard still reads the API |
+| Collector with dashboard | Set `SOLAR_DASHBOARD=true` in the container | Adds the dashboard on port `8765`; the collector API stays on `8766` |
 | Home Assistant | [REST sensor example](docs/home-assistant.md) | Reads the collector API directly; the dashboard is optional |
 
 **Status:** experimental, verified on one installation. The original implementation
@@ -173,7 +173,8 @@ Open <http://127.0.0.1:8765>. The dashboard connects to the collector on port
 restarting it leaves collection running. It can also run on a different computer;
 see the [dashboard guide](docs/dashboard.md).
 
-To run both in one container, use the [combined build target](docs/dashboard.md#combined-container).
+To run both in one container, set `SOLAR_DASHBOARD=true`; see the
+[container example](docs/dashboard.md#combined-container).
 Closing the browser leaves collection running. Stopping the combined container
 stops both programs.
 
@@ -188,7 +189,7 @@ for stale or missing readings. This works with the dashboard process stopped.
 Start `collector.py` with your existing `radio.local.json` and database first.
 Existing SQLite data needs no migration. Update service/container commands using
 the [setup guide](docs/setup.md) and [dashboard guide](docs/dashboard.md).
-The `combined` target is also available for keeping both programs in one container.
+Set `SOLAR_DASHBOARD=true` to keep both programs in one container.
 
 ## Documentation
 

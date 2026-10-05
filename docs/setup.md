@@ -161,6 +161,7 @@ Additional environment settings:
 | `SOLAR_HISTORY_PATH` | `data/solar-history.sqlite3` beside `collector.py` |
 | `SOLAR_API_BIND` | `127.0.0.1`; collector API listening address |
 | `SOLAR_API_PORT` | `8766`; collector API port |
+| `SOLAR_DASHBOARD` | `false`; set `true` to also run the dashboard with the container's default command |
 | `SOLAR_LATITUDE`, `SOLAR_LONGITUDE` | Unset; optional, supply both for nighttime inference |
 
 Coordinates stay in your runtime environment. Nighttime inference never creates
@@ -207,21 +208,23 @@ HTTP health check, to judge recovery.
 
 ## Run the collector in a container
 
-The default image contains the collector and its API. The optional dashboard has
-a separate image target. You can also use the
-[combined target](dashboard.md#combined-container) to run both in one container.
+There is one image. It runs the collector and API by default. To add the
+dashboard, set `SOLAR_DASHBOARD=true` when starting the container and publish
+port `8765` too; see the [example](dashboard.md#combined-container).
+
 Create a network for consumers and a persistent data volume, then build and run
-the collector:
+the collector. These commands use Podman; Docker accepts the same build and run
+options, including `-f Containerfile`:
 
 ```sh
-podman build --target collector -t solar-city-collector -f Containerfile .
+podman build -t solar-city-inverter-radio -f Containerfile .
 podman network create solar-city
 podman volume create solar-city-inverter-radio-data
 podman run --rm --name solar-city-collector --network solar-city \
   -p 127.0.0.1:8766:8766 \
   --mount type=bind,src="$PWD/radio.local.json",dst=/config/radio.local.json,ro \
   -v solar-city-inverter-radio-data:/data \
-  solar-city-collector
+  solar-city-inverter-radio
 ```
 
 Make the config readable by container UID `10001`; on a single-user host, a
@@ -239,7 +242,7 @@ podman run --rm --name solar-city-collector --network solar-city \
   -p 127.0.0.1:8766:8766 \
   --env-file .env \
   -v solar-city-inverter-radio-data:/data \
-  solar-city-collector
+  solar-city-inverter-radio
 ```
 
 Keep `.env` private. Do not bake installation values into the image.

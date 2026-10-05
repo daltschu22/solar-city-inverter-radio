@@ -60,8 +60,11 @@ def main():
     except ValueError as exc:
         raise SystemExit("SOLAR_API_PORT and PORT must be distinct ports between 1 and 65535") from exc
 
-    collector_env = {**os.environ, "SOLAR_API_BIND": "127.0.0.1"}
-    dashboard_env = {**os.environ, "SOLAR_COLLECTOR_URL": f"http://127.0.0.1:{api_port}"}
+    collector_env = dict(os.environ)
+    api_host = collector_env.get("SOLAR_API_BIND", "127.0.0.1")
+    if api_host == "0.0.0.0":
+        api_host = "127.0.0.1"
+    dashboard_env = {**os.environ, "SOLAR_COLLECTOR_URL": f"http://{api_host}:{api_port}"}
     return supervise([
         ("collector", [sys.executable, str(ROOT / "collector.py")], collector_env),
         ("dashboard", [sys.executable, str(ROOT / "server.py")], dashboard_env),
