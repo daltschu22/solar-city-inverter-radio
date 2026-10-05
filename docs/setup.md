@@ -158,13 +158,13 @@ HTTP health check, to judge recovery.
 The image includes the application and static assets. Build from the repository:
 
 ```sh
-podman build -t solar-city -f Containerfile .
-podman volume create solar-city-data
-podman run --rm --name solar-city \
+podman build -t solar-city-inverter-radio -f Containerfile .
+podman volume create solar-city-inverter-radio-data
+podman run --rm --name solar-city-inverter-radio \
   -p 127.0.0.1:8765:8765 \
   --mount type=bind,src="$PWD/radio.local.json",dst=/config/radio.local.json,ro \
-  -v solar-city-data:/data \
-  solar-city
+  -v solar-city-inverter-radio-data:/data \
+  solar-city-inverter-radio
 ```
 
 Make the config readable by container UID `10001`; on a single-user host, a

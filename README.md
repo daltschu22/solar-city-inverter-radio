@@ -1,4 +1,4 @@
-# SolarCity Collector Replacement
+# SolarCity Inverter Radio
 
 A local replacement for the **SolarCity / Tesla solar monitoring box**, using a
 SMLIGHT SLZB-06U and Python.
@@ -49,8 +49,8 @@ keep it powered off while this replacement runs.
 2. Install the application:
 
    ```sh
-   git clone https://github.com/daltschu22/solar-city.git
-   cd solar-city
+   git clone https://github.com/daltschu22/solar-city-inverter-radio.git
+   cd solar-city-inverter-radio
    python3 -m venv .venv
    .venv/bin/pip install -r requirements.txt
    ```

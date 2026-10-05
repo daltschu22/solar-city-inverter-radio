@@ -4,7 +4,7 @@ My Power-One solar inverter already had a radio. What I wanted was a local way
 to read it: a small radio bridge, software I could inspect, and measurements stored
 on my own machine.
 
-The result is [SolarCity Collector Replacement](https://github.com/daltschu22/solar-city), a
+The result is [SolarCity Inverter Radio](https://github.com/daltschu22/solar-city-inverter-radio), a
 Python collector that takes over the original SolarCity collector's role for one
 specific legacy Power-One/Digi setup. It maintains the radio network, answers the
 inverter's startup messages, and reads production and diagnostic registers.
@@ -135,14 +135,14 @@ operating settings.
 
 The repository includes the collector, decoder, synthetic protocol tests, a local
 web interface, and a container definition. The detailed
-[setup guide](https://github.com/daltschu22/solar-city/blob/main/docs/setup.md)
+[setup guide](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/setup.md)
 covers the exact configuration fields and startup sequence.
 
 The main steps are:
 
 1. Confirm the inverter and radio match the supported legacy setup.
 2. Configure the SMLIGHT RCP bridge, then use the included
-   [discovery script and report-to-config guide](https://github.com/daltschu22/solar-city/blob/main/docs/discovery.md)
+   [discovery script and report-to-config guide](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/discovery.md)
    to gather your channel, operating PAN IDs, expected collector EUI, and inverter EUI.
    Existing captures or accessible radio configuration are also useful sources.
 3. Review the evidence, put the observed values in `radio.local.json`, and validate
@@ -182,7 +182,7 @@ records and decodes SolarCity traffic. Other communities have built replacement
 coordinators for [Enecsys](https://github.com/bulldog5046/Enecsys-Zigbee-HA) and
 [APsystems](https://github.com/patience4711/ESP32-read-APS-inverters). Their
 protocols differ, but they show why both network behavior and application replies
-matter. The repository includes further [sources and credits](https://github.com/daltschu22/solar-city/blob/main/docs/references.md).
+matter. The repository includes further [sources and credits](https://github.com/daltschu22/solar-city-inverter-radio/blob/main/docs/references.md).
 
 For someone with this Power-One/Digi combination, the useful starting point is
 now concrete: the coordinator behavior, startup bytes, register requests, and
