@@ -1,10 +1,12 @@
 # Contributing
 
-Install uv and Node.js 20 or newer. Run `uv sync --locked` and `./check` before
-submitting changes. uv manages the Python environment; `.python-version` selects
-3.12, and CI also tests 3.14. Dependency changes belong in `pyproject.toml` and
-must include the updated `uv.lock`. Tests must run without hardware, network access to a radio, or local site
-configuration. `check` selects the synthetic test configuration explicitly.
+Get the source and Python dependencies using [Get the software](docs/setup.md#get-the-software).
+Development checks also require Node.js 20 or newer. Run `./check` before
+submitting changes. `.python-version` selects Python 3.12; use
+`UV_PYTHON=3.14 ./check` to test the other version covered by CI. Dependency changes
+belong in `pyproject.toml` and must include the updated `uv.lock`. Tests must run
+without hardware, network access to a radio, or local site configuration.
+`check` selects the synthetic test configuration explicitly.
 
 The intended scope is one known Power-One/Digi inverter on an unsecured legacy
 network. Changes to commissioning, security, new hardware, or register maps need
@@ -34,3 +36,22 @@ Consumers must not create extra radio polls when reading cached measurements.
 
 Update the setup guide and protocol documentation when behavior changes. Keep
 private deployments and their Git history separate from this repository.
+
+## Source layout
+
+```text
+collector/          Radio network, polling, configuration, SQLite, and JSON API
+dashboard/          Web server and static assets
+runtime/            Container startup and process supervision
+tools/              Discovery, capture, polling, and publication utilities
+tests/              Offline Python and JavaScript tests
+docs/               Setup, protocol, API, and integration guides
+```
+
+Run module commands and checks from the repository root. `./check` runs the
+Python tests, JavaScript tests, and publication-hygiene checks.
+
+Keep installation commands in `docs/setup.md`. Link to those steps from the
+README and specialist guides. Configuration reference follows the installation
+steps; discovery internals belong in `docs/discovery.md` and wire details in
+`docs/protocol.md`.

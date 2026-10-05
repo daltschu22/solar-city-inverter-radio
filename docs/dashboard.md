@@ -72,13 +72,11 @@ Set `SOLAR_DASHBOARD=true` when starting the container to run both programs.
 Leave the variable unset (or set it to `false`) to run only the collector. Both
 modes expose the collector API on port `8766`; the dashboard adds port `8765`.
 
-Finish radio discovery and fill in `.env` using the
-[environment setup](setup.md#environment-variables). Stop any existing collector
-that owns the bridge, then:
+Complete [collector setup](setup.md) to generate and validate `.env`.
+Follow [Build the image and prepare storage](setup.md#build-the-image-and-prepare-storage).
+Stop any collector that owns the bridge, then start this combined container:
 
 ```sh
-docker build -t solar-city-inverter-radio .
-docker volume create solar-city-inverter-radio-data
 docker run --rm --name solar-city-combined --stop-timeout 30 \
   -p 127.0.0.1:8766:8766 \
   -p 127.0.0.1:8765:8765 \

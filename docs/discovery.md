@@ -16,30 +16,10 @@ of the device's model or ownership. Confirm the equipment before using the value
 
 ## Gather a new capture
 
-Prepare the bridge with the supported RCP firmware and install the repository's
-Python dependencies. The tool gathers settings directly from radio traffic.
-If `.env` already exists, use `--write-env .env.review` to save a separate file.
-
-You can scan with the same SMLIGHT you will later use for the replacement.
-First stop any program connected to that SMLIGHT, including this project's collector, ZHA,
-Zigbee2MQTT, or OTBR. The `--exclusive-radio` flag confirms you have done this:
-the capture process resets and configures the bridge for listening. It never
-stops another service automatically. A separate receiver is useful if you want
-to leave an existing replacement running during capture.
-
-Run the command below from the repository directory on your computer. Replace
-`YOUR_BRIDGE_HOST` with the SMLIGHT's IP address or hostname, as used to open its
-web interface, without `http://` or a trailing slash. Leave the inverter powered
-during the scan. A working original SolarCity collector can remain on while you
-listen; power it off before starting the replacement collector.
-
-```sh
-uv run python tools/discover_radio.py \
-  --host YOUR_BRIDGE_HOST \
-  --exclusive-radio \
-  --output captures/discovery.json \
-  --write-env .env
-```
+For a first installation, follow [the setup guide's discovery step](setup.md#obtain-the-network-identity).
+It includes the scan command and generates `.env`. This section covers scan
+options and interpreting the results. Always give a live scan exclusive access
+to its SMLIGHT; it resets the bridge for capture.
 
 By default it listens on channels 11 through 26 for 20 seconds each, about five
 minutes total. It does not transmit. Use `--channels 14 --seconds 120`, for
@@ -71,6 +51,7 @@ Stock TI RCP promiscuous reception can miss ACK-requested unicast packets. This
 can leave identity fields unknown even when traffic is present. The report only
 claims what the receiver actually captured. A receiver with verified unicast
 capture support may be needed for a complete result.
+Normal addressed reception by the collector uses the SMLIGHT alone.
 
 ## Analyze existing captures
 
@@ -134,7 +115,7 @@ The report deliberately makes that distinction.
 
 ## Apply reviewed values
 
-Add `--write-env .env` to discovery, as in the command above. The tool writes a
+The setup command uses `--write-env .env` to export configuration. The tool writes a
 complete environment file when there is exactly one matching inverter/network
 candidate. It uses observed values from that inverter and its network, checks
 for conflicts, and requires unsecured application traffic with stack profile `0`.
@@ -168,34 +149,13 @@ EUI appears on multiple networks, analyze a capture of the intended network
 rather than selecting by EUI alone. Use new output paths for repeated attempts,
 such as `--output captures/selected-2.json --write-env .env.review`.
 
-The generated variables are:
+The [configuration reference](setup.md#environment-variables) describes the
+exported variables. The export preserves EUI leading zeroes and byte order and
+uses the collector identity expected by the inverter. `SOLAR_INITIAL_ADDRESS`
+is omitted so the collector can learn the current short address at runtime.
 
-| Environment variable | Source |
-| --- | --- |
-| `SOLAR_RADIO_HOST` | `--host` for a live scan, or `--bridge-host` for saved captures |
-| `SOLAR_RADIO_PORT` | `--port`, default `6638` |
-| `SOLAR_RADIO_CHANNEL` | Observed channel |
-| `SOLAR_PAN_ID` | Observed 16-bit operating PAN ID |
-| `SOLAR_EXTENDED_PAN_ID` | Observed extended PAN ID |
-| `SOLAR_INVERTER_EUI` | Selected inverter's radio identity |
-| `SOLAR_COLLECTOR_EUI` | Collector identity expected by that inverter |
-
-The export preserves EUI leading zeroes and byte order. The collector EUI comes
-from the inverter's network, even when the original box is unavailable.
-`SOLAR_INITIAL_ADDRESS` is omitted so the collector can learn the current short
-address at runtime.
-
-Validate the reviewed file without opening a radio connection:
-
-```sh
-uv run --env-file .env python -m collector.config
-```
-
-The [environment setup](setup.md#environment-variables) covers all variables.
-Once capture has finished, power off the original collector if you have one,
-give the replacement exclusive access to the bridge, and follow
-[Start and verify](setup.md#start-and-verify). Keep the report, captures, and
-`.env` private; the repository ignores them under the paths above.
+Return to [configuration validation](setup.md#configure-the-collector), then
+continue with startup. Keep the report, captures, and `.env` private.
 
 ## If the report is incomplete
 
@@ -210,3 +170,33 @@ Use a new `--output` filename for each attempt. If the inverter has fully left
 its network and never exposes its former settings, this tool cannot reconstruct
 them from anonymous searches. Cold commissioning from that state remains
 unverified; unknown fields stay unknown.
+
+## Capture raw traffic
+
+For protocol investigation, `tools/smlight_capture.py` saves frames without
+building a configuration report. Stop the replacement collector and give the
+capture tool exclusive access to the bridge. From the repository directory:
+
+```sh
+mkdir -p captures
+uv run python tools/smlight_capture.py \
+  --host YOUR_BRIDGE_HOST --channels YOUR_DECIMAL_CHANNEL \
+  --seconds 90 --output captures/reference
+```
+
+Each channel receives the full dwell interval. To scan all channels, supply
+`--channels 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26`. Passive capture
+sends no packets. The optional `--beacon-request` flag and `capture` extra work
+as described under [scan options](#gather-a-new-capture).
+
+## Radio identity details
+
+XBee `ID` is the configured extended PAN setting; `ID=0` means automatic
+selection. The operating values are XBee `OI` for the 16-bit PAN ID and `OP` for
+the extended PAN ID. Use those observed operating values. Channel displays may
+be hexadecimal: `0x14` is decimal 20.
+
+The supported network uses stack profile `0`, unsecured traffic, Digi profile
+`0xc105`, serial-data cluster `0x0011`, and endpoints `0xe8`. See the
+[protocol reference](protocol.md) for the packet layout. Changing network
+identities cannot make another inverter protocol compatible.

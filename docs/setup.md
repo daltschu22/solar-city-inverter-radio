@@ -1,14 +1,31 @@
-# Replace a SolarCity monitoring collector
+# Set up the collector
 
-This is **part 1: data collection**. The collector owns the radio, saves readings,
-and provides a JSON API. You can finish here, connect your own consumer or
-[Home Assistant](home-assistant.md), or add the [optional dashboard](dashboard.md).
+This guide takes you from a SMLIGHT and a compatible inverter to local readings.
+The collector can run by itself; the dashboard and Home Assistant are optional.
 
-This guide covers a single legacy Power-One/Digi installation using an existing
-collector identity. It assumes the inverter already contains a working radio.
-All addresses in the tests are fictional. The repository contains no reusable
-installation identity. The [discovery tool](discovery.md) can gather candidate
-settings from traffic; review its evidence before configuring the collector.
+Before starting, confirm that your equipment matches the
+[compatibility list and photos](../README.md#compatibility). You will need the
+SMLIGHT, a network connection, and a computer to run the collector.
+
+1. [Get the software](#get-the-software).
+2. [Prepare the SMLIGHT](#prepare-the-bridge).
+3. [Discover the inverter settings](#obtain-the-network-identity).
+4. [Review and validate the configuration](#configure-the-collector).
+5. [Start collecting and check for readings](#start-and-verify).
+
+## Get the software
+
+Install Git and [uv](https://docs.astral.sh/uv/getting-started/installation/) on
+the computer that will run the collector. Then open a terminal and run:
+
+```sh
+git clone https://github.com/daltschu22/solar-city-inverter-radio.git
+cd solar-city-inverter-radio
+uv sync --locked
+```
+
+Run the remaining commands from this repository directory. Keep it on persistent
+storage: the collector saves its history in `data/solar-history.sqlite3`.
 
 ## Prepare the bridge
 
@@ -40,9 +57,8 @@ CC2652P radio**.
    Menu labels vary by firmware version; SMLIGHT's
    [web-interface guide](https://smlight.tech/manual/slzb-06/guide/configuration/)
    describes the **Mode**, **Network**, and serial settings pages.
-5. **Run discovery next.** Follow [Obtain the network identity](#obtain-the-network-identity)
-   below from the computer that will run the collector. Discovery connects to
-   the SMLIGHT, prints its radio firmware version, and scans for inverter traffic.
+5. **Continue to discovery below.** It connects to the SMLIGHT, prints its radio
+   firmware version, and scans for inverter traffic.
 
 The tested radio firmware is **SMLIGHT OpenThread RCP build `20260304`**.
 The web installer may offer a different build; check the version reported by
@@ -59,13 +75,13 @@ OPENTHREAD/1.4.0.0; CC13XX_CC26XX thread-v1.4-ti-1.0-ea-1.0; SLZB-06U 20260304
 
 ## Obtain the network identity
 
-Run the [discovery tool](discovery.md#gather-a-new-capture) before filling in
-the collector configuration. Start with your SMLIGHT's IP address or hostname,
-which you can find in your router's device list and use to open the bridge's
-web interface. The tool scans for the channel, PAN IDs, and radio identities.
+Stop other programs connected to the SMLIGHT, including capture tools, ZHA,
+Zigbee2MQTT, OTBR, or another collector. Leave the inverter powered. A working
+original SolarCity box can stay on during this listening step.
 
-Install the Python dependencies using the [quick start](../README.md#quick-start).
-Stop other programs connected to the SMLIGHT, then run from the repository root:
+Run the following command, replacing `YOUR_BRIDGE_HOST` with the SMLIGHT's IP
+address or hostname from the previous step. Use the address alone, without
+`http://` or a trailing slash:
 
 ```sh
 uv run python tools/discover_radio.py \
@@ -75,94 +91,115 @@ uv run python tools/discover_radio.py \
   --write-env .env
 ```
 
-Replace `YOUR_BRIDGE_HOST` with that LAN address. `--exclusive-radio` confirms
-the bridge is available for the scan, which resets it into listening mode.
-Leave the inverter powered and allow about five minutes. A working original
-SolarCity collector can stay on during discovery; power it off before starting
-the replacement collector.
+`--exclusive-radio` confirms that this program has the SMLIGHT to itself. The
+scan resets the bridge into listening mode and takes about five minutes. It
+finds the radio settings needed by the collector and writes:
 
-The tool writes `.env` when it finds one complete, consistent inverter candidate.
-Review the generated settings and selected inverter in `captures/discovery.json`
-before starting collection. If export fails, the report is kept; follow
-[the export guide](discovery.md#apply-reviewed-values) for multiple candidates or
-[the incomplete-report guide](discovery.md#if-the-report-is-incomplete) for missing
-or conflicting fields. Existing files are never overwritten. A complete, verified
-configuration for this inverter and network can be reused instead of scanning.
+- `.env`: the collector configuration, when one complete, consistent inverter
+  candidate is found.
+- `captures/discovery.json`: the findings and evidence, along with raw capture
+  files in the same directory.
 
-The discovered values and bridge settings have these meanings:
-
-| Environment variable | Meaning and source |
-| --- | --- |
-| `SOLAR_RADIO_HOST` | Hostname or IP of your SMLIGHT bridge |
-| `SOLAR_RADIO_PORT` | TCP bridge port; normally `6638` |
-| `SOLAR_RADIO_CHANNEL` | Actual IEEE 802.15.4 channel, decimal 11 through 26 |
-| `SOLAR_PAN_ID` | 16-bit operating PAN ID, shown in MAC headers or XBee `OI` |
-| `SOLAR_EXTENDED_PAN_ID` | 64-bit operating network identity, found in beacons or XBee `OP` |
-| `SOLAR_COLLECTOR_EUI` | Original collector's 64-bit radio identity |
-| `SOLAR_INVERTER_EUI` | Inverter radio's 64-bit identity |
-| `SOLAR_INITIAL_ADDRESS` | Optional short address to offer on association; normally omit |
-
-XBee `ID` is the **configured** extended PAN setting. `ID=0` means automatic
-selection; it does not mean the operating extended PAN is zero. Record the
-operating value. Channel displays may be hexadecimal: `0x14` is decimal 20.
-
-Discovery can learn from inverter-originated traffic or
-[analyze saved captures](discovery.md#analyze-existing-captures). Beacons contain
-the extended PAN; IEEE addresses appear in suitable network headers and device
-announcements. The collector's short address is `0x0000`. The inverter's short
-address may change and is learned at runtime.
-
-Confirm the captured network is unsecured and uses stack profile `0`. Also
-confirm the application profile `0xc105`, serial-data cluster `0x0011`, and
-endpoints `0xe8`. These protocol fields are implemented explicitly in the code;
-changing PAN IDs cannot make another inverter protocol compatible.
-
-For an optional capture with the production collector stopped:
-
-```sh
-uv run python tools/smlight_capture.py \
-  --host YOUR_BRIDGE_HOST --channels YOUR_DECIMAL_CHANNEL \
-  --seconds 90 --output captures/reference
-```
-
-Create `captures/` first. A channel sweep can use `--channels 11 12 13 14 15 16
-17 18 19 20 21 22 23 24 25 26`. Each channel receives the full dwell interval.
-The capture tool resets/configures its bridge and therefore requires exclusive
-access even when listening passively. It does not transmit by default.
-
-The optional `--beacon-request` flag actively sends a discovery frame and requires
-the optional capture dependency. Use `uv run --extra capture python` in place
-of `uv run python` when adding that flag. Passive capture needs no extra.
-
-**Capture limitation:** stock TI RCP promiscuous reception may omit ACK-requested
-unicast frames. A partial capture can reveal some settings but cannot establish
-that startup replies are absent. Use an independent receiver with verified
-unicast capture support for a complete application exchange. Production addressed
-reception does not require a separate sniffer or modified RCP firmware.
-
-If the original collector is unavailable, the inverter's own traffic may reveal
-the needed identities and network settings. The discovery tool has recovered all
-five radio settings from inverter-originated traffic on an operating replacement
-network. Discovery from a fully unjoined inverter and fresh pairing under a new
-collector EUI remain untested. See the [evidence limits](discovery.md).
+Existing files are never overwritten. If you have an existing configuration,
+use `--write-env .env.review` to save a separate file. If discovery cannot produce
+configuration, it keeps its findings and explains the problem; follow
+[discovery help](discovery.md#if-the-report-is-incomplete). For multiple candidates,
+see [selecting an inverter](discovery.md#apply-reviewed-values).
 
 ## Configure the collector
 
-Use the `.env` generated by discovery. The collector reads environment variables
-supplied by uv, Docker, or your service manager. Validation rejects missing
-settings, invalid ranges, and
-matching inverter/collector identities before opening the radio. Changes require
-restarting the app.
+Open the generated `.env` and confirm the SMLIGHT address. Review the selected
+inverter in `captures/discovery.json`: nearby equipment can appear in a scan.
+Keep these files private; their standard paths are ignored by Git.
 
-Run `uv run --env-file .env python -m collector.config` to validate without
-opening a connection.
+Validate the configuration:
 
-The optional `SOLAR_INITIAL_ADDRESS` defaults to a synthetic unicast seed. It is
-used when assigning an address to the known inverter; it is not assumed to be a
-live neighbor. The current verified short address is persisted in SQLite. Keep a
-separate database for each installation.
+```sh
+uv run --env-file .env python -m collector.config
+```
 
-### Environment variables
+A successful check prints `Radio configuration is valid` and opens no radio
+connection. If you saved a separate `.env.review`, use that filename to validate
+it, then put the reviewed settings in `.env` before continuing.
+
+The defaults are enough to start. Optional settings, including polling intervals,
+are listed in [Environment variables](#environment-variables) at the end of this guide.
+
+## Start and verify
+
+**Power off the original SolarCity/Tesla collector**, if present, and finish any
+capture still using the SMLIGHT. Run one collector per bridge.
+
+Start collection in your terminal:
+
+```sh
+uv run --env-file .env python -m collector
+```
+
+Leave it running. For Docker or Podman, use the [container instructions](#run-the-collector-in-a-container)
+below instead of running a second collector.
+
+The collector listens for 30 seconds at startup, then waits for identifiable
+inverter traffic. With the default settings, power readings normally update about
+every two minutes once communication is established.
+
+Open <http://127.0.0.1:8766/api/live> on this computer. This is a JSON data page.
+Check for a recent `timestamp`, a plausible `solar_w` value, and increasing
+`collector.responses`. Zero is a valid power reading; `null` means no reading
+has been saved yet. `/healthz` checks only whether the HTTP service responds.
+
+History is available at <http://127.0.0.1:8766/api/history?range=1h>. See the
+[API reference](api.md) for the fields and freshness rules. A quiet inverter may
+need to return to operation before readings appear. Verify the next
+night-to-morning transition before relying on unattended recovery.
+
+Collection is now set up. To add a web interface, follow
+[dashboard setup](dashboard.md). To add sensors, follow
+[Home Assistant setup](home-assistant.md). Both read the collector API.
+
+## Run the collector in a container
+
+The container runs the collector and API by default. To add the
+dashboard, set `SOLAR_DASHBOARD=true` when starting the container and publish
+port `8765` too; see the [example](dashboard.md#combined-container).
+
+Create a network for consumers and a persistent data volume, then build and run
+the collector. These commands use Docker; you can substitute `podman` if that
+is your container runtime. Both automatically find `Dockerfile`:
+
+### Build the image and prepare storage
+
+```sh
+docker build -t solar-city-inverter-radio .
+docker network create solar-city
+docker volume create solar-city-inverter-radio-data
+```
+
+### Start the container
+
+```sh
+docker run --rm --name solar-city-collector --network solar-city \
+  -p 127.0.0.1:8766:8766 \
+  --env-file .env \
+  -v solar-city-inverter-radio-data:/data \
+  solar-city-inverter-radio
+```
+
+Use the `.env` generated and validated above. Keep a persistent data volume and
+stop the foreground collector before starting its container replacement. The
+HTTP port is published to host loopback only. Add your own service management or
+reverse proxy according to your environment.
+
+Keep `.env` private. Do not bake installation values into the image.
+
+Containers start with `python -m runtime`. Rebuild the image after updating and
+keep the data volume across container replacements. The [dashboard guide](dashboard.md)
+covers the separate viewer and optional combined container.
+
+## Environment variables
+
+The collector reads these from `.env` when launched with `--env-file`, or from
+its service environment. Restart collection after changing a setting.
 
 | Variable | Requirement or default |
 | --- | --- |
@@ -176,21 +213,9 @@ separate database for each installation.
 | `SOLAR_INITIAL_ADDRESS` | `0x2345`; normally leave unset |
 
 Numeric values accept decimal or `0x`-prefixed hexadecimal strings. EUIs use 16
-hexadecimal digits without colons, in the report's display order. Required variables must be supplied. Optional variables use the defaults above
-when unset. Empty values are invalid, including for optional variables.
-
-Review the `.env` generated by [discovery](discovery.md#apply-reviewed-values).
-`config.example.env` also lists the settings for service-managed installations.
-The `.env` file is ignored by Git. Load its reviewed values with uv:
-
-```sh
-uv run --env-file .env python -m collector.config
-uv run --env-file .env python -m collector
-```
-
-Use this after capture has stopped and the original collector is powered off,
-as described in [Start and verify](#start-and-verify). Your service manager can
-also supply these variables directly; `.env` is a convenience for local setup.
+hexadecimal digits without colons, in the report's display order. Required
+variables must be supplied. Optional variables use their defaults when unset.
+Empty values are invalid, including for optional variables.
 
 Additional environment settings:
 
@@ -227,77 +252,10 @@ Coordinates stay in your runtime environment. Nighttime inference never creates
 measurements or changes inverter settings. It requires a recent low-power reading
 near sunset, a healthy bridge, quiet radio traffic, and no reported fault.
 
-## Start and verify
+Both HTTP services bind to localhost by default and have no built-in
+authentication. If exposing them to other devices, use trusted network access or
+your own authenticated reverse proxy. The API can include equipment serial numbers.
 
-Power off the original collector, if present. Ensure no capture tool, ZHA, Zigbee2MQTT, OTBR,
-or second instance owns the SMLIGHT connection. Then run:
-
-```sh
-uv run --env-file .env python -m collector
-```
-
-The startup sequence is:
-
-1. Initialize the RCP and listen passively for 30 seconds. Seeing the original
-   collector's identity causes a conflict error. Silence is not proof it is off.
-2. Set the configured PAN and EUI and use coordinator short address `0x0000`.
-3. Answer network discovery, association, coordinator verification, and the
-   supported application startup exchange.
-4. Learn the inverter's current short address from identifiable direct traffic.
-5. Send serialized read requests and store validated responses.
-
-Use <http://127.0.0.1:8766/api/live> for current collector status and
-`/api/history?range=1h` on the same port for saved readings. `/healthz` only
-verifies the HTTP process is responding; it does not prove the inverter is
-producing or communicating. The [API guide](api.md) describes units and freshness.
-
-Keep this process running to collect data. The dashboard can be started and
-stopped independently. Reading the API never triggers additional inverter polls.
-
-Verify identity, request/response counters, fresh readings, and plausible units.
-Observe startup and the next overnight-to-morning transition before relying on
-unattended recovery. Hardware testing covers one installation; long-term reliability
-and broader hardware compatibility remain unverified.
-
-An overnight gap is not direct proof of a hardware sleep mode. Allow startup
-time and use response freshness to judge recovery.
-
-## Run the collector in a container
-
-The container runs the collector and API by default. To add the
-dashboard, set `SOLAR_DASHBOARD=true` when starting the container and publish
-port `8765` too; see the [example](dashboard.md#combined-container).
-
-Create a network for consumers and a persistent data volume, then build and run
-the collector. These commands use Docker; you can substitute `podman` if that
-is your container runtime. Both automatically find `Dockerfile`:
-
-```sh
-docker build -t solar-city-inverter-radio .
-docker network create solar-city
-docker volume create solar-city-inverter-radio-data
-docker run --rm --name solar-city-collector --network solar-city \
-  -p 127.0.0.1:8766:8766 \
-  --env-file .env \
-  -v solar-city-inverter-radio-data:/data \
-  solar-city-inverter-radio
-```
-
-Fill in `.env` before running the container. Keep a persistent data volume and
-stop the foreground collector before starting its container replacement. The
-HTTP port is published to host loopback only. Add your own service management or
-reverse proxy according to your environment.
-
-Keep `.env` private. Do not bake installation values into the image.
-
-Containers start with `python -m runtime`. Rebuild the image after updating and
-keep the data volume across container replacements. The [dashboard guide](dashboard.md)
-covers the separate viewer and optional combined container.
-
-## Contributing a useful reproduction report
-
-Include inverter model, radio firmware, bridge firmware, Python version, and the
-specific protocol exchange that differs. Replace device identities consistently
-in both decoded fields and packet bytes. Omit serial numbers, hostnames, IPs,
-locations, production history, and credentials. Do not upload a raw database or
-capture as a default bug-report attachment.
+Keep a separate database for each installation. `SOLAR_INITIAL_ADDRESS` is an
+address offered during association; the collector learns and saves the verified
+current address at runtime.

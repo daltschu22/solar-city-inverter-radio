@@ -1,10 +1,8 @@
 # Collector API
 
-Run `uv run --env-file .env python -m collector` from the repository root to maintain the radio network,
-collect readings, and save them to SQLite. Its read-only JSON API defaults to
-`http://127.0.0.1:8766`. You can use
-it without starting the dashboard. HTTP requests read saved data and collector
-status; they do not send extra measurement queries to the inverter.
+Complete [collector setup](setup.md) to start gathering measurements. The
+read-only JSON API defaults to `http://127.0.0.1:8766`. HTTP requests read saved
+data and collector status; they do not send extra queries to the inverter.
 
 ```sh
 curl http://127.0.0.1:8766/api/live

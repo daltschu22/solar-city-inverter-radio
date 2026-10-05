@@ -1,9 +1,8 @@
 # Agent guide
 
-This repository replaces a SolarCity/Tesla monitoring collector with a SMLIGHT
-bridge and Python. Use this guide when helping someone install it or change the
-code. Read [README.md](README.md) and the relevant guide before working on a live
-installation.
+Read [README.md](README.md) for compatibility and use [docs/setup.md](docs/setup.md)
+as the installation procedure. This file records decisions and constraints for
+agents helping with setup or changing the project.
 
 ## How the application works
 
@@ -18,128 +17,52 @@ installation.
   both processes. API requests do not trigger inverter polls.
 - The database belongs in persistent storage: `/data/solar-history.sqlite3`
   inside the container, configurable with `SOLAR_HISTORY_PATH`.
-- Optional timing settings are `SOLAR_POLL_INTERVAL_SECONDS` (default `60`, range
-  `15`–`3600`) and `SOLAR_RECONNECT_INTERVAL_SECONDS` (default `15`, range `1`–`3600`).
-  Add them to `.env` or the service environment and restart collection. Discovery
-  exports radio identity settings; timing values are a separate user preference.
-  Power normally updates every two polling intervals. Follow the Home Assistant
-  guide when adjusting its sensor freshness thresholds.
 
 ## Helping someone set it up
 
-Run all `uv run ...` commands from the repository root. Keep the local `.env`
-file in that directory.
-
-1. Inspect existing configuration and services first. Reuse information already
-   provided; ask only for missing details. Establish the inverter model, bridge
-   model/firmware and address, intended runtime host, and whether a collector is
-   already running. Collection alone is a complete installation; add the
-   dashboard or Home Assistant when wanted.
-2. Check [compatibility](README.md#compatibility), then follow
-   [radio firmware and bridge configuration](#radio-firmware-and-bridge-configuration)
-   below before discovery or collection.
-3. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and run
-   `uv sync --locked`. `pyproject.toml` declares dependencies, `uv.lock`
-   pins them, and `.python-version` selects Python 3.12 by default. Container
-   builds use the same lockfile. Keep metadata and lockfile changes together.
-4. Run [discovery](docs/discovery.md) as the default path for a new installation.
-   Assume the user starts with the inverter and a SMLIGHT, and help locate the
-   bridge's LAN address through its web interface or router's device list.
-   Gather the channel, PAN IDs, and EUIs with the tool rather than asking the user
-   to supply them. A complete, verified configuration for the same inverter and
-   network can be reused. Offline capture analysis does not touch hardware.
-   A live scan resets/configures the SMLIGHT for listening, so establish
-   exclusive access before passing
-   `--exclusive-radio`. Do not run it alongside a collector using that bridge.
-   A working original SolarCity box may stay on during passive discovery.
-5. Include `--write-env .env` in the discovery command to generate configuration.
-   Review the selected inverter's evidence and the generated file using the
-   [export guide](docs/discovery.md#apply-reviewed-values). Never
-   guess unknown/conflicting fields or use test identities for live operation.
-   The collector EUI must be the identity the inverter expects, not the new
-   bridge's factory EUI. Recovery from a fully unjoined inverter with unknown
-   settings is unverified; explain missing evidence instead of promising pairing.
-6. Use the generated `.env` or transfer its reviewed settings to the service
-   environment. If export fails, resolve the missing or conflicting evidence;
-   select `--inverter-eui` when there are multiple candidates. Reanalyze saved
-   frames to export without repeating a live scan. Preserve existing files.
-   Pass `--env-file .env` to `uv run` to load reviewed settings, as shown in
-   [setup](docs/setup.md#environment-variables). Validate using
-   `uv run --env-file .env python -m collector.config`; this opens no radio connection.
-7. Before starting collection, establish that the original SolarCity/Tesla
-   collector is powered off and this process has exclusive use of the bridge.
-   Act on existing user authorization and known state; ask when a required
-   physical step or service ownership is unknown. Do not change inverter
-   operating settings or flash firmware as an incidental setup action.
-8. Follow the [container commands](docs/setup.md#run-the-collector-in-a-container)
-   or run `uv run --env-file .env python -m collector`. Build with
-   `docker build -t solar-city-inverter-radio .`. Preserve the existing data
-   volume on upgrades. Use the user's chosen service manager for unattended
-   operation and document the start, stop, and update commands.
-9. Verify `/api/live` and `/api/history`, response freshness, and plausible units.
-   `/healthz` only confirms HTTP availability. Startup includes 30 seconds of
-   listening; measurements normally update about every two minutes. A quiet
-   inverter is not proof of failure or nighttime standby. Report what was
-   actually verified and any remaining hardware-dependent checks.
-
-For the optional viewer, follow [dashboard setup](docs/dashboard.md). For Home
-Assistant, use the [REST sensor example](docs/home-assistant.md); it does not
-need the dashboard. Publish HTTP ports on host loopback by default, as the
-examples do. Remote access needs the user's intended trusted network or
-authenticated proxy; the application has no built-in authentication.
+- Establish the inverter and bridge models, intended collector host, bridge LAN
+  address, and whether another program is using the radio. Use information
+  already provided and ask only for missing details.
+- Follow the setup guide in order. Assume a new user needs discovery; run its
+  export command to generate configuration rather than asking for PAN IDs or
+  EUIs. A verified configuration for the same equipment can be reused.
+- Review the selected equipment and discovered evidence. For missing values or
+  multiple candidates, follow [discovery help](docs/discovery.md). Never guess
+  identities, use synthetic test settings on live hardware, or overwrite a
+  working configuration. Saved captures can be reanalyzed without a live scan.
+- Power off the original SolarCity/Tesla collector before replacement collection.
+  Establish exclusive bridge access for scans and collection. Act on existing
+  authorization; ask when required physical state or service ownership is unknown.
+- Use the user's chosen service manager and persistent storage. Keep local
+  settings private. The [configuration reference](docs/setup.md#environment-variables)
+  owns the supported environment variables, defaults, and ranges.
+- Verify fresh readings and saved history, not just HTTP availability. Report
+  what was verified in software and what requires hardware observation. Discovery
+  from a fully unjoined inverter and fresh pairing remain unverified.
+- Add the [dashboard](docs/dashboard.md) or [Home Assistant](docs/home-assistant.md)
+  only when wanted; collection alone is a complete setup.
 
 ## Radio firmware and bridge configuration
 
-The tested bridge is a **SMLIGHT SLZB-06U with a CC2652P radio**. Confirm the
-model and radio chip in its web interface. Record its current core firmware,
-radio firmware, and network settings privately before making changes. The core
-firmware runs the web interface and network bridge; the radio firmware supplies
-the OpenThread RCP interface used by this collector.
+Follow [Prepare the bridge](docs/setup.md#prepare-the-bridge) for the firmware
+and web-interface steps. Inspect the model, radio chip, and current versions
+first; record existing network settings privately. The core firmware runs the
+web interface, while the radio firmware supplies the RCP interface.
 
-| Setting | Tested value |
-| --- | --- |
-| Radio firmware | Official SMLIGHT CC2652P OpenThread RCP build `20260304` |
-| Serial bridge transport | TCP over the local network |
-| TCP port | `6638` |
-| Radio UART baud rate | `460800` |
-| Host connection | Reachable, stable bridge hostname or IP |
+Flash only within the authorized bridge-setup scope. Check the offered image's
+chip and build against the tested version in that guide; report an unavailable
+build rather than claiming another is equivalent. Preserve a working matching
+installation. Leave inverter firmware and operating settings alone.
 
-1. Open the bridge's web interface at its LAN address. Establish exclusive use
-   of the bridge before changing firmware or mode; stop any collector, capture
-   tool, ZHA, Zigbee2MQTT, or OTBR connected to it.
-2. If the radio needs flashing and bridge setup is within the user's authorized
-   scope, follow SMLIGHT's [RCP flashing instructions](https://smlight.tech/manual/slzb-06/guide/thread-matter/).
-   The documented web workflow selects **Mode → Matter-over-Thread** and waits
-   for flashing to finish. Check the offered image's chip and build before
-   applying it. A core firmware update alone does not install radio firmware.
-   If the tested build is unavailable, report that gap; another build requires
-   validation. Leave a working matching installation as configured.
-3. Configure network serial access with TCP port `6638` and UART baud `460800`.
-   Use the bridge's Ethernet or Wi-Fi connection and retain a stable address,
-   such as a DHCP reservation. SMLIGHT's [web configuration guide](https://smlight.tech/manual/slzb-06/guide/configuration/)
-   describes its network and mode controls. Menu labels can vary by core version.
-   This application uses raw IEEE 802.15.4 through RCP; stop at bridge setup in
-   the vendor guide. Do not create a Thread network or install its OTBR add-on
-   for this integration. Leave the inverter's Digi firmware and settings alone.
-4. Install the Python dependencies from setup step 3, then run
-   [discovery](docs/discovery.md#gather-a-new-capture) from the intended collector
-   host using the bridge's LAN address. No inverter address or network identity
-   is required to start the scan. A successful scan verifies TCP and Spinel access;
-   receiving no inverter frames does not by itself establish a firmware problem. Compare
-   the capture tool's `Radio firmware:` output with the full tested version in
-   [bridge setup](docs/setup.md#prepare-the-bridge).
-5. Use `--write-env .env` to export the bridge address, port, and discovered radio
-   settings, then review the result using the
-   [export guide](docs/discovery.md#apply-reviewed-values). The collector applies
-   these radio settings at startup. The expected collector EUI comes
-   from the inverter's network; preserve its displayed byte order and leading
-   zeroes. Keep settings in ignored `.env` or the service environment.
-6. Run `uv run --env-file .env python -m collector.config`. This validates values
-   offline. Finish capture, power off the original SolarCity collector if present,
-   then start collection and verify fresh readings using the setup steps above.
+Give discovery exclusive bridge access and compare its reported firmware with
+the setup guide. A scan with no inverter frames does not by itself establish a
+firmware problem. Keep radio identity selection tied to observed evidence.
 
 ## Privacy and changes
 
+- Keep installation commands in `docs/setup.md`. The README introduces the
+  project and links to setup; specialist guides own their options and reference
+  details. Link to the owning guide instead of copying its procedure.
 - Describe the current setup directly. Leave development history, migration notes,
   and comparisons with previous approaches out of user-facing docs unless requested.
 - Keep installation hosts/IPs, EUIs, serial numbers, coordinates, credentials,
