@@ -50,6 +50,15 @@ and the PV DC disconnect below. Use the enclosure as a visual reference, then
 confirm the exact model on your equipment's label and check radio compatibility
 against the table above. A matching enclosure alone does not confirm support.
 
+### Original SolarCity collector
+
+<img src="docs/images/original-solarcity-collector.jpg" alt="Original white SolarCity monitoring collector with an external black antenna and three indicator symbols" width="360">
+
+The original SolarCity monitoring box replaced by this project. The SMLIGHT
+SLZB-06U and Python collector take over its radio-network and measurement role.
+Keep the original box powered off while running the replacement, which reuses
+its radio identity.
+
 ## Quick start
 
 1. Configure the SLZB-06U for the tested RCP firmware and network serial bridge.

@@ -20,6 +20,8 @@ IGNORED = {".git", ".venv", "__pycache__", "data", "captures", "dist"}
 REVIEWED_IMAGES = {
     "docs/images/power-one-pvi-5000-outd-us-z-front.jpg":
         "4e40ea9c5a48528e18fca71b1739125451aa13ffaf3a64a20ca30aa392d86d12",
+    "docs/images/original-solarcity-collector.jpg":
+        "b7e5a39567b5ceefb6b18b45c4f061c2055a67c325d438450137a3a055e81254",
 }
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif", ".heic", ".heif"}
 PATTERNS = [
