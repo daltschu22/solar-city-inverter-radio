@@ -5,6 +5,12 @@ must be running to provide readings. It owns the radio and database; the dashboa
 needs only the API URL and Python 3.12 or newer. It does not load radio settings
 or require the radio's Python dependencies.
 
+The same dashboard works with **replacement** and experimental **passive**
+collection. Choose the radio mode in the
+[collector setup guide](setup.md#choose-how-to-collect-readings). In passive mode,
+the dashboard shows listening status and observed exchanges; the original box
+controls the reading frequency. Missing exchanges leave gaps in the graphs.
+
 ## On the same computer
 
 Finish [part 1: collection](setup.md) and leave the collector running. In another
@@ -71,6 +77,8 @@ Container DNS resolves `solar-city-collector` on the shared network. Using
 Use the [collector with dashboard command](setup.md#collector-with-dashboard)
 in the setup guide. It enables `SOLAR_DASHBOARD=true` and publishes the dashboard
 on port `8765` alongside the collector API on port `8766`.
+The combined container supports either collection mode from `.env`;
+`SOLAR_DASHBOARD` only controls whether the viewer starts.
 
 The container starts two Python processes:
 

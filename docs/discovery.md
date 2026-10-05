@@ -1,13 +1,21 @@
-# Discover radio settings without the original collector
+# Discover radio settings
 
 Run discovery after preparing the SMLIGHT bridge and before configuring the
 collector. Start with the bridge's LAN address; the scan gathers evidence for
 the inverter's channel, PAN IDs, and radio identities. Add `--write-env .env`
 to generate the collector configuration, then review it before starting collection.
 
+Use discovery for both **replacement** and experimental **passive** collection.
+A working original SolarCity/Tesla box can stay on during the scan. Discovery can
+also recover settings from inverter traffic on an operating network without that
+box. After discovery, [choose the collection mode](setup.md#choose-how-to-collect-readings):
+replacement requires the original box off, while passive requires it working.
+Finding network settings does not prove that the receiver captures enough unicast
+traffic for passive readings.
+
 `tools/discover_radio.py` gathers candidate network settings from radio traffic.
 It does not load installation settings, import configured device identities, pair
-with a device, or start the replacement collector. Unknown settings remain unknown.
+with a device, or start either collection mode. Unknown settings remain unknown.
 
 The tool can analyze saved captures or collect new traffic using an exclusively
 owned SMLIGHT bridge. It identifies potential inverters from the supported startup
@@ -174,8 +182,9 @@ unverified; unknown fields stay unknown.
 ## Capture raw traffic
 
 For protocol investigation, `tools/smlight_capture.py` saves frames without
-building a configuration report. Stop the replacement collector and give the
-capture tool exclusive access to the bridge. From the repository directory:
+building a configuration report. Stop this project's collector in either mode
+and give the capture tool exclusive access to the SMLIGHT bridge. The original
+SolarCity/Tesla box can remain on. From the repository directory:
 
 ```sh
 mkdir -p captures

@@ -78,9 +78,9 @@ They mark old or missing readings unavailable, including quiet overnight periods
 instead of reporting zero. The energy timestamp belongs to its saved reading;
 fresh power does not make old energy fresh.
 
-The collector's radio polling cycle is independent of `scan_interval`. Reading
-the API every minute does not increase radio query frequency. If you set
-`SOLAR_POLL_INTERVAL_SECONDS`, adjust the example's power age threshold (`180`)
+In replacement mode, the collector's radio polling cycle is independent of
+`scan_interval`. Reading the API every minute does not increase radio query
+frequency. If you set `SOLAR_POLL_INTERVAL_SECONDS`, adjust the example's power age threshold (`180`)
 to three times that interval and energy age threshold (`900`) to fifteen times
 that interval. For a `120`-second query interval, use `360` and `1800` respectively.
 

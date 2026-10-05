@@ -1,10 +1,11 @@
 # Radio coordination and measurement protocol
 
 This implementation covers the subset of an unsecured legacy Digi Zigbee network
-needed by one known Power-One inverter. The bridge handles the radio and MAC
-acknowledgments; Python handles coordinator behavior and application traffic.
-Those responsibilities apply to replacement mode. Passive mode leaves all network
-and query management to the original SolarCity/Tesla box.
+needed by one known Power-One inverter. In **replacement mode**, the bridge handles
+the radio and MAC acknowledgments; Python handles coordinator behavior and
+application traffic. The network maintenance, startup, and polling sections below
+describe that mode. Experimental [passive monitoring](#passive-monitoring) leaves
+all network and query management to the original SolarCity/Tesla box.
 
 ```mermaid
 flowchart LR

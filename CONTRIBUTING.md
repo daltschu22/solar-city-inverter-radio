@@ -25,9 +25,11 @@ inspect the final image before committing. Record its SHA-256 in `REVIEWED_IMAGE
 in `tools/check_publication.py` after review. The check rejects unreviewed images
 and changes to an approved photo, including accidentally restoring its metadata.
 
-Preserve the one-connection ownership rule and the startup conflict check. A test
-run must never contact a live bridge. Avoid adding automatic network resets or
-inverter writes as recovery strategies.
+Preserve exclusive SMLIGHT connection ownership in both collection modes and the
+startup conflict check in replacement mode. Passive mode must leave coordination
+and polling to the original box, with no transmit path or automatic switch to
+replacement. A test run must never contact a live bridge. Avoid adding automatic
+network resets or inverter writes as recovery strategies.
 
 Keep collection independent of the dashboard. `collector/api.py` owns the radio and
 database; `dashboard/server.py` serves the optional UI and proxies reads to the collector
@@ -40,7 +42,7 @@ private deployments and their Git history separate from this repository.
 ## Source layout
 
 ```text
-collector/          Radio network, polling, configuration, SQLite, and JSON API
+collector/          Replacement polling, passive monitoring, configuration, SQLite, and JSON API
 dashboard/          Web server and static assets
 runtime/            Container startup and process supervision
 tools/              Discovery, capture, polling, and publication utilities

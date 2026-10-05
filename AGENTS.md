@@ -6,8 +6,10 @@ agents helping with setup or changing the project.
 
 ## How the application works
 
-- `collector/api.py` owns the SMLIGHT connection, maintains the radio network, polls
-  measurements, and reads/writes SQLite. Its HTTP API defaults to port `8766`.
+- `collector/api.py` owns the SMLIGHT connection, reads/writes SQLite, and serves
+  the HTTP API on port `8766`. `SOLAR_COLLECTOR_MODE=replacement` (default)
+  selects `collector/smlight_collector.py` to maintain the network and poll.
+  `passive` selects `collector/passive.py` to decode the original box's exchanges.
 - `dashboard/server.py` is the optional dashboard on port `8765`. It reads the collector's
   HTTP API; it never opens the radio or SQLite database. Set
   `SOLAR_COLLECTOR_URL` when the collector is on another host or container.
@@ -21,7 +23,8 @@ agents helping with setup or changing the project.
 ## Helping someone set it up
 
 - Establish the inverter and bridge models, intended collector host, bridge LAN
-  address, and whether another program is using the radio. Use information
+  address, whether the original box should keep running, and whether another
+  program is using the SMLIGHT. Use information
   already provided and ask only for missing details.
 - Follow the setup guide in order. Assume a new user needs discovery; run its
   export command to generate configuration rather than asking for PAN IDs or

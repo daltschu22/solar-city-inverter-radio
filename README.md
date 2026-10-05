@@ -1,27 +1,33 @@
 # SolarCity Inverter Radio
 
-Read solar production locally using a **SMLIGHT SLZB-06U** in place of the
-SolarCity / Tesla monitoring box. The collector talks to the inverter's radio,
-saves readings to SQLite, and provides a JSON API.
+Read solar production locally using a **SMLIGHT SLZB-06U**, either replacing the
+SolarCity / Tesla monitoring box or listening alongside it. The collector saves
+readings to SQLite and provides a JSON API.
 
-An experimental **passive mode** can listen alongside a working original box.
-It uses the same API, history, and optional dashboard. Live passive reception is
-unverified, and the SMLIGHT firmware can omit the unicast packets it needs.
-Choose a mode in the [setup guide](docs/setup.md#choose-how-to-collect-readings).
+| Collection mode | Original SolarCity / Tesla box | How readings are gathered |
+| --- | --- | --- |
+| **Replacement** (default) | Powered off | Our collector manages the radio network and queries the inverter |
+| **Passive** (experimental) | Powered on and working | Our collector listens to the original box's requests and the inverter's replies |
+
+Both modes use the same API, history, optional dashboard, and Home Assistant
+integration. Passive reception has not been verified on live hardware, and the
+SMLIGHT firmware can omit the unicast packets it needs. Choose a mode in the
+[setup guide](docs/setup.md#choose-how-to-collect-readings).
 
 **Tested inverter: Power-One PVI-5000-OUTD-US-Z** with its SolarCity-era Digi XBee
 radio. Power-One made the inverter; SolarCity supplied the monitoring equipment.
 
 Use the collector on its own, connect Home Assistant, or add the included
-optional dashboard. Normal operation uses your local network and does not require
-a Tesla account or cloud connection.
+optional dashboard. This software uses your local network and does not require
+a Tesla account or cloud connection. Passive mode depends on the original box
+continuing to query the inverter.
 
 ## Quick start
 
 **[Follow the setup guide →](docs/setup.md)**
 
-Configure the SMLIGHT, discover your inverter, and start collecting data with
-or without the included dashboard.
+Configure the SMLIGHT, discover your inverter, choose replacement or passive
+collection, and start with or without the included dashboard.
 
 ## Compatibility
 
@@ -54,11 +60,10 @@ against the table above. A matching enclosure alone does not confirm support.
 
 <img src="docs/images/original-solarcity-collector.jpg" alt="Original white SolarCity monitoring collector with an external black antenna and three indicator symbols" width="360">
 
-The original SolarCity monitoring box replaced by this project. The SMLIGHT
-SLZB-06U and Python collector take over its radio-network and measurement role.
-Keep the original box powered off while running the replacement, which reuses
-its radio identity.
-In passive mode, leave this box powered and working; it still manages the inverter.
+The original SolarCity monitoring box. In replacement mode, the SMLIGHT and Python
+collector take over its radio-network and measurement role; keep this box powered
+off because the replacement reuses its radio identity. In passive mode, leave it
+powered and working; it still manages the inverter.
 
 ## Use your readings
 

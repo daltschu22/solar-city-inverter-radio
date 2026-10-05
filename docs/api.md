@@ -22,8 +22,8 @@ curl 'http://127.0.0.1:8766/api/history?range=24h'
 | `collector.state` | Current status, such as `live`, `stale`, `discovering`, or `standby` |
 | `collector.interval_seconds` | Replacement query interval (default 60); `null` in passive mode |
 | `collector.reconnect_interval_seconds` | Delay before retrying a failed radio session; defaults to 15 |
-| `collector.telemetry_stale_after_seconds` | Age threshold for diagnostic groups, scaled with the polling interval |
-| `collector.requests`, `collector.responses`, `collector.timeouts` | Polling counters for this collector process |
+| `collector.telemetry_stale_after_seconds` | Diagnostic age threshold; derived from the replacement polling interval or the passive freshness setting |
+| `collector.requests`, `collector.responses`, `collector.timeouts` | Replacement polling counters; passive mode counts matched replies in `responses` and leaves the other two at zero |
 | `collector.telemetry` | Identity and diagnostic groups, each with values, observation time, and a stale flag |
 
 In passive mode, `collector.state` starts as `listening`. `packets_observed`

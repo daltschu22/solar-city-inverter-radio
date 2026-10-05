@@ -197,6 +197,7 @@ Collection is now set up. To add a web interface, follow
 ## Run the collector in a container
 
 The image can run the collector alone or the collector with the dashboard.
+Both container options use the replacement or passive mode selected in `.env`.
 Choose either option below after building the image.
 
 Create a network for consumers and a persistent data volume, then build and run

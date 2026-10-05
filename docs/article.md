@@ -1,18 +1,39 @@
-# Replacing the SolarCity monitoring box with a local radio collector
+# Reading a SolarCity inverter locally: replacement or passive collection
 
 My Power-One solar inverter already had a radio. What I wanted was a local way
 to read it: a small radio bridge, software I could inspect, and measurements stored
 on my own machine.
 
 The result is [SolarCity Inverter Radio](https://github.com/daltschu22/solar-city-inverter-radio), a
-Python collector that takes over the original SolarCity collector's role for one
-specific legacy Power-One/Digi setup. It maintains the radio network, answers the
-inverter's startup messages, and reads production and diagnostic registers.
+Python collector for one specific legacy Power-One/Digi setup. It offers two
+ways to gather readings: replace the original SolarCity box, or leave it running
+and listen to its radio exchanges.
 
 This has worked with a **Power-One PVI-5000-OUTD-US-Z**, its existing Digi XBee radio, and a
-**SMLIGHT SLZB-06U**. It is a working prototype for that combination. The method
-currently requires the original collector's radio identity and network settings;
-a fresh pairing with an entirely new identity remains untested.
+**SMLIGHT SLZB-06U** in replacement mode. It is a working prototype for that
+combination. Replacement requires the original collector's radio identity and
+network settings; a fresh pairing with an entirely new identity remains untested.
+
+## Choose who manages the inverter
+
+**Replacement mode**, the default, maintains the radio network, answers the
+inverter's startup messages, and reads production and diagnostic registers.
+The original box stays powered off because the replacement uses its radio identity.
+
+**Passive mode** leaves the original box powered and working. Our collector
+listens for its requests and the inverter's replies, then saves complete matched
+exchanges. It does not issue queries or perform network recovery. The original
+box determines which readings are available and how often they arrive.
+
+Passive mode is experimental and has only been tested in software. SMLIGHT's
+current RCP firmware can omit the unicast packets needed to reconstruct an
+exchange, so live reception still needs validation. Missing packets produce gaps;
+the listener never switches to replacement mode automatically.
+
+Both options feed the same SQLite history, JSON API, optional dashboard, and
+Home Assistant integration. The radio coordination and query sequence below
+describe replacement mode. The [setup guide](setup.md#choose-how-to-collect-readings)
+explains how to select either option.
 
 ## The radio carries a familiar protocol
 
@@ -144,9 +165,11 @@ The main steps are:
    with `--write-env .env` to gather the radio settings and generate configuration.
 3. Review the evidence and generated `.env`, then validate it with
    `uv run --env-file .env python -m collector.config`.
-4. Power off the original collector, if present, and give the Python collector
-   exclusive access to the radio bridge after capture has finished.
-5. Validate fresh readings, then observe startup and overnight recovery.
+4. Select replacement or passive mode in `.env`. Power off the original box for
+   replacement, or leave it working for passive. After capture finishes, give the
+   Python collector exclusive access to the SMLIGHT bridge.
+5. Validate fresh readings and saved history. Check startup and overnight recovery
+   in replacement mode, or complete captured exchanges in passive mode.
 
 From the repository root, run `uv run --env-file .env python -m collector` for collection and the JSON
 API on port `8766`. That is
@@ -161,7 +184,8 @@ API reads do not increase inverter polling frequency.
 A capture used to inspect the application exchange needs to include unicast
 traffic. Stock TI RCP promiscuous reception can miss ACK-requested unicasts, so a
 quiet capture is not conclusive. An independent, verified sniffer can help during
-initial characterization. Normal operation uses the SMLIGHT alone.
+initial characterization. Replacement collection uses the SMLIGHT without the
+original box; passive collection requires the original box to keep querying.
 
 The repository contains fictional identities and synthetic telemetry.
 Installation configuration, captures, databases, and logs stay out of version
@@ -174,6 +198,11 @@ With the original collector powered off, testing covered recovery from a radio
 reset, a leave/rejoin cycle, and an overnight-to-morning transition on one
 installation. Independent hardware reproductions and long-term reliability
 remain unverified.
+
+Passive request/reply matching, fragmented replies, storage, and reconnect
+behavior have offline tests. Receiving complete exchanges alongside the original
+box, and confirming that the radio does not send unintended hardware
+acknowledgments, still need over-the-air testing.
 
 The included discovery tool can recover candidate settings from inverter traffic
 and explains the evidence for each value. On an operating replacement network,
