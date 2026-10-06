@@ -11,6 +11,7 @@ from tools.smlight_capture import decode_record
 from collector.inverter import TelemetryStore
 from collector.coordinator import Coordinator, inverter_left
 from collector.config import require_configured
+from collector.transition_capture import TransitionCapture, TRANSITION_CYCLE, near_transition
 from tools.smlight_poll import CHANNEL, COLLECTOR, INVERTER, PAN, acknowledgment, is_inverter, read_request, response_values
 
 
@@ -169,13 +170,14 @@ def measurement(frame, values):
 
 class SmlightCollector:
     def __init__(self, host, history, port=6638, interval=60, session_factory=RadioSession,
-                 night_schedule=None, reconnect_interval=15):
+                 night_schedule=None, reconnect_interval=15, transition_capture_until=None):
         self.host, self.port, self.interval = host, port, interval
         self.reconnect_interval = reconnect_interval
         self.history = history
         self.telemetry = TelemetryStore(history.path)
         self.session_factory = session_factory
         self.night_schedule = night_schedule
+        self.capture = TransitionCapture(history.path.parent, transition_capture_until)
         self.last_reading = history.latest()
         self.lock = threading.Lock()
         self.stop_event = threading.Event()
@@ -194,6 +196,7 @@ class SmlightCollector:
             "query_tx_failures": 0, "last_query_kind": None, "last_query_tx_status": None,
             "network_transmissions": 0, "network_replies": 0, "network_tx_failures": 0,
             "connected": False, "firmware": None,
+            "query_cycle": "normal",
         }
 
     def update(self, **values):
@@ -213,6 +216,7 @@ class SmlightCollector:
             status["state"] = "stale"
         status["telemetry_stale_after_seconds"] = self.interval * len(QUERY_CYCLE) * 2
         status["telemetry"] = self.telemetry.snapshot(stale_after=status["telemetry_stale_after_seconds"])
+        status["transition_capture"] = self.capture.snapshot()
         status["standby_until"] = None
         dc = status["telemetry"].get("inverter_dc", {}).get("values", {})
         fault = dc.get("fault_bits", 0) or dc.get("event_bits_2", 0) or dc.get("operating_state") == "Fault"
@@ -230,12 +234,44 @@ class SmlightCollector:
         return self.sequence
 
     def send_network(self, session, frame, reply=False):
-        status = session.transmit(frame)
+        status = self.transmit(session, frame, "network_reply" if reply else "network_maintenance")
         with self.lock:
             self.status["network_transmissions"] += 1
             self.status["network_replies"] += int(reply)
             self.status["network_tx_failures"] += int(status != 0)
         return status
+
+    def transmit(self, session, frame, purpose, kind=None):
+        self.capture.record("tx", purpose=purpose, kind=kind, raw=frame[:-2].hex())
+        try:
+            status = session.transmit(frame)
+        except Exception as exc:
+            self.capture.record("tx_error", purpose=purpose, kind=kind, error=str(exc))
+            raise
+        self.capture.record("tx_result", purpose=purpose, kind=kind, status=status)
+        return status
+
+    def capture_frame(self, frame, pending):
+        if not self.capture.active() or frame.get("channel") != CHANNEL:
+            return
+        # Include control traffic for our PAN and known EUIs, including association
+        # before the inverter has a short address. Hardware MAC ACKs may be absent.
+        known = {COLLECTOR, INVERTER}
+        if (f"0x{PAN:04x}" not in (frame.get("source_pan_id"), frame.get("destination_pan_id"))
+                and not known.intersection(frame.get(key) for key in
+                                           ("network_source_ieee", "network_destination_ieee"))
+                and not {"0x" + eui for eui in known}.intersection(
+                    frame.get(key) for key in ("mac_source", "mac_destination"))):
+            return
+        self.capture.record("rx", frame=frame, pending=pending, inverter=is_inverter(frame))
+
+    def query_cycle(self, now):
+        transition = self.capture.active(now) and near_transition(self.night_schedule, now)
+        mode = "transition" if transition else "normal"
+        if mode != self.status["query_cycle"]:
+            self.update(query_cycle=mode)
+            self.capture.record("query_cycle", mode=mode)
+        return TRANSITION_CYCLE if transition else QUERY_CYCLE
 
     def start(self):
         self.thread = threading.Thread(target=self.run, name="solar-poller", daemon=True)
@@ -271,12 +307,20 @@ class SmlightCollector:
         self.seen.append(identity)
         with self.lock:
             self.status["responses"] += 1
+        if self.capture.active():
+            decoded = self.telemetry.snapshot().get(kind, {}).get("values", {})
+            self.capture.record("response", kind=kind, observed_at=frame["observed_at"],
+                                frame_id=[frame["capture_sweep"], frame["timestamp"]],
+                                values=values, decoded=decoded)
         print("Solar reading:", kind, values, flush=True)
         return True
 
     def run_session(self, session):
         session.initialize(self.stop_event)
         self.update(state="discovering", connected=True, firmware=session.firmware, last_error=None)
+        self.capture.record("session_ready", firmware=session.firmware,
+                            interval_seconds=self.interval, coordinates_configured=self.night_schedule is not None,
+                            capture_until=self.capture.until)
         startup_until = time.monotonic() + 30
         next_poll = startup_until
         addressed = False
@@ -288,10 +332,21 @@ class SmlightCollector:
         coordinator = Coordinator(self.history.path)
         association_pending = False
         last_network_event = None
+        next_heartbeat = 0
+        rx_errors = 0
         while not self.stop_event.is_set():
             frame = session.receive()
             now = time.monotonic()
+            if now >= next_heartbeat:
+                next_heartbeat = now + 60
+                self.capture.record("heartbeat", state=self.status["state"],
+                                    last_packet_at=self.status["last_packet_at"],
+                                    last_reading_at=self.status["last_reading_at"],
+                                    requests=self.status["requests"], responses=self.status["responses"],
+                                    timeouts=self.status["timeouts"], receive_errors=rx_errors)
             if frame:
+                self.capture_frame(frame, pending)
+                rx_errors += bool(frame.get("receive_error") or frame.get("bad_fcs"))
                 last_radio_activity = now
                 if (frame.get("network_source_ieee") == COLLECTOR
                         and frame.get("mac_source") == "0x0000"):
@@ -305,6 +360,8 @@ class SmlightCollector:
                         print("Solar inverter network:", event, frame["network_source"],
                               frame.get("network_command_payload", ""), flush=True)
                         last_network_event = identity
+                        self.capture.record("network_event", kind=event,
+                                            observed_at=frame["observed_at"])
                     coordinator.observe(frame, now)
                     self.update(last_packet_at=frame["observed_at"], rssi=frame["rssi"],
                                 inverter_address=frame["network_source"])
@@ -318,7 +375,7 @@ class SmlightCollector:
                     if addressed and event != "left":
                         ack = acknowledgment(frame, self.next_sequence())
                         if ack:
-                            session.transmit(ack)
+                            self.transmit(session, ack, "aps_ack")
                         if pending and self.accept_response(frame, pending):
                             pending = None
             if now < startup_until:
@@ -353,21 +410,23 @@ class SmlightCollector:
                 detail = (f"Radio delivery failed (status {tx_status}); no {pending} reply"
                           if tx_status != 0 else f"Inverter did not answer the latest {pending} query")
                 self.update(state="stale", last_error=detail)
+                self.capture.record("query_timeout", kind=pending, tx_status=tx_status)
                 print("Solar query timeout:", pending, "radio status", tx_status, flush=True)
                 pending = None
             if now >= next_poll and pending is None:
                 next_poll = now + self.interval
+                cycle = self.query_cycle(time.time())
                 # Allow one response window of scheduling slack between polls.
                 if live is None or time.time() - live["observed_at"] > max(60, self.interval + 5):
                     self.update(state="waiting", last_error="Waiting for the inverter radio")
                     continue
-                pending = QUERY_CYCLE[query_index % len(QUERY_CYCLE)]
+                pending = cycle[query_index % len(cycle)]
                 query_index += 1
                 frame_out = read_request(int(live["network_source"], 16), self.next_sequence(), pending)
                 self.update(last_poll_at=time.time(), last_query_kind=pending)
                 with self.lock:
                     self.status["requests"] += 1
-                tx_status = session.transmit(frame_out)
+                tx_status = self.transmit(session, frame_out, "query", pending)
                 self.update(last_query_tx_status=tx_status)
                 if tx_status != 0:
                     with self.lock:
@@ -380,6 +439,7 @@ class SmlightCollector:
                 # sunrise before the inverter resumes. Keep the coordinator
                 # available; reconnect only when the transport/health check fails.
                 session.check_health()
+                self.capture.record("bridge_health", ok=True)
                 last_radio_activity = time.monotonic()
 
     def run(self):
@@ -387,13 +447,16 @@ class SmlightCollector:
             session = None
             try:
                 self.update(state="connecting", connected=False)
+                self.capture.record("session_start")
                 session = self.session_factory(self.host, self.port)
                 self.run_session(session)
             except Exception as exc:
                 state = "conflict" if "Old Tesla collector" in str(exc) else "disconnected"
                 self.update(state=state, connected=False, last_error=str(exc))
+                self.capture.record("session_error", state=state, error=str(exc))
                 print("Solar poller:", str(exc), flush=True)
             finally:
+                self.capture.record("session_end")
                 if session:
                     try:
                         session.close()

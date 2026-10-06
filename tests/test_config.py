@@ -79,6 +79,23 @@ assert Coordinator().assigned_address == 0x6789
             config = load_config()
         self.assertEqual((config.channel, config.pan_id), (25, 0x1234))
 
+    def test_capture_deadline_requires_explicit_timezone_and_replacement_mode(self):
+        from datetime import datetime
+        name = "SOLAR_TRANSITION_CAPTURE_UNTIL"
+        self.assertIsNone(RadioConfig().transition_capture_until)
+        for value in ("2030-01-02T12:00:00Z", "2030-01-02T07:00:00-05:00"):
+            with patch.dict(os.environ, {**self.env, name: value}):
+                self.assertEqual(load_config().transition_capture_until,
+                                 datetime.fromisoformat("2030-01-02T12:00:00+00:00").timestamp())
+        for value in ("", "2030-01-02", "2030-01-02T12:00:00", "forever", "nan"):
+            with self.subTest(value=value), patch.dict(os.environ, {**self.env, name: value}):
+                with self.assertRaisesRegex(ValueError, name):
+                    load_config()
+        with patch.dict(os.environ, {**self.env, name: "2030-01-02T12:00:00Z",
+                                     "SOLAR_COLLECTOR_MODE": "passive"}):
+            with self.assertRaisesRegex(ValueError, "replacement mode"):
+                load_config()
+
     def test_passive_mode_and_freshness_are_explicit_and_validated(self):
         with patch.dict(os.environ, self.env):
             self.assertEqual(load_config().mode, "replacement")

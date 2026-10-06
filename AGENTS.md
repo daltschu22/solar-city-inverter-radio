@@ -83,6 +83,9 @@ firmware problem. Keep radio identity selection tied to observed evidence.
 - Preserve the collector/dashboard API boundary and existing SQLite history.
   Keep radio requests serialized; do not shorten polling intervals or change
   coordinator behavior without evidence and relevant protocol tests.
+- For an authorized shutdown/startup study, use [transition recording](docs/transitions.md)
+  on the existing collector connection with a finite deadline. Keep its private
+  JSONL files out of commits and distinguish observed states from inferred silence.
 - Read [protocol](docs/protocol.md) before changing radio behavior and
   [API documentation](docs/api.md) before changing response fields. Update the
   corresponding docs when commands, settings, or behavior change.

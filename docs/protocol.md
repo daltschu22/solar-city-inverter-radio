@@ -176,6 +176,11 @@ This lets the previous response
 support a slower query cadence while pausing queries after unanswered requests.
 Network-neighbor freshness and leave/rejoin handling keep their own timing rules.
 
+Optional [transition recording](transitions.md) captures the existing connection
+and temporarily substitutes additional verified AC/DC diagnostic reads for
+identity and meter-detail reads near sunrise/sunset. It preserves the query
+interval, power/energy slots, response validation, retries, and coordinator timing.
+
 Accepted responses must match the known inverter and collector, direct source,
 PAN, profile, cluster, endpoints, expected length, Modbus unit/function, and CRC.
 Frames flagged with receive errors, bad FCS, or unsupported fragmentation are

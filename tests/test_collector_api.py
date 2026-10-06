@@ -102,7 +102,8 @@ class CollectorApiTests(unittest.TestCase):
     def test_startup_passes_configured_timing_to_radio_collector(self):
         from collector.config import RadioConfig
         configuration = RadioConfig(host="radio.example.invalid", configured=True,
-                                    poll_interval_seconds=300, reconnect_interval_seconds=45)
+                                    poll_interval_seconds=300, reconnect_interval_seconds=45,
+                                    transition_capture_until=1900000000)
         with patch("collector.config.require_configured", return_value=configuration), \
                 patch.object(collector, "SOLAR_HISTORY_PATH", self.history.path), \
                 patch.object(collector, "ThreadingHTTPServer"), \
@@ -111,6 +112,7 @@ class CollectorApiTests(unittest.TestCase):
             collector.main()
         self.assertEqual(radio.call_args.kwargs["interval"], 300)
         self.assertEqual(radio.call_args.kwargs["reconnect_interval"], 45)
+        self.assertEqual(radio.call_args.kwargs["transition_capture_until"], 1900000000)
         radio.return_value.start.assert_called_once()
         radio.return_value.stop.assert_called_once()
 

@@ -1,6 +1,7 @@
 """Installation settings. Importing offline decoders never opens a radio socket."""
 
 from dataclasses import dataclass
+from datetime import datetime
 import os
 import re
 
@@ -20,6 +21,7 @@ class RadioConfig:
     reconnect_interval_seconds: int = 15
     mode: str = "replacement"
     passive_stale_seconds: int = 300
+    transition_capture_until: float | None = None
     configured: bool = False
 
 
@@ -36,6 +38,7 @@ ENV_FIELDS = {
     "reconnect_interval_seconds": "SOLAR_RECONNECT_INTERVAL_SECONDS",
     "mode": "SOLAR_COLLECTOR_MODE",
     "passive_stale_seconds": "SOLAR_PASSIVE_STALE_SECONDS",
+    "transition_capture_until": "SOLAR_TRANSITION_CAPTURE_UNTIL",
 }
 
 
@@ -78,6 +81,17 @@ def load_config():
         raise ValueError("SOLAR_COLLECTOR_MODE must be replacement or passive")
     if collector == inverter:
         raise ValueError("Collector and inverter identities must differ")
+    capture_until = None
+    if "transition_capture_until" in data:
+        try:
+            instant = datetime.fromisoformat(data["transition_capture_until"])
+            if instant.tzinfo is None:
+                raise ValueError()
+            capture_until = instant.timestamp()
+        except (ValueError, OverflowError) as exc:
+            raise ValueError("SOLAR_TRANSITION_CAPTURE_UNTIL must be an ISO 8601 timestamp with a timezone") from exc
+        if mode != "replacement":
+            raise ValueError("SOLAR_TRANSITION_CAPTURE_UNTIL requires replacement mode")
     return RadioConfig(
         host=data["host"].strip(), port=number("port", 6638, 1, 65535),
         channel=number("channel", None, 11, 26),
@@ -89,6 +103,7 @@ def load_config():
         reconnect_interval_seconds=number("reconnect_interval_seconds", 15, 1, 3600),
         mode=mode,
         passive_stale_seconds=number("passive_stale_seconds", 300, 30, 86400),
+        transition_capture_until=capture_until,
         configured=True,
     )
 

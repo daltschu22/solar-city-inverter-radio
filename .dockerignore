@@ -10,5 +10,6 @@ captures
 *.db
 *.pcap*
 *.log
+**/transition-capture.jsonl*
 tests
 docs

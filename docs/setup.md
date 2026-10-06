@@ -296,6 +296,7 @@ Additional environment settings:
 | `SOLAR_POLL_INTERVAL_SECONDS` | `60`; replacement mode only, seconds between measurement queries, integer `15`–`3600` |
 | `SOLAR_PASSIVE_STALE_SECONDS` | `300`; passive mode only, freshness and chart-gap threshold in seconds, integer `30`–`86400`; does not change Tesla's query timing |
 | `SOLAR_RECONNECT_INTERVAL_SECONDS` | `15`; seconds before retrying a failed radio session, integer `1`–`3600` |
+| `SOLAR_TRANSITION_CAPTURE_UNTIL` | Unset; optional replacement-mode [shutdown/startup recording](transitions.md), ending at an ISO 8601 timestamp with a timezone |
 | `SOLAR_DASHBOARD` | `false`; set `true` to also run the dashboard with the container's default command |
 | `SOLAR_LATITUDE`, `SOLAR_LONGITUDE` | Unset; optional, supply both for nighttime inference in replacement mode |
 

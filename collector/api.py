@@ -145,7 +145,8 @@ def main():
         smlight_collector = SmlightCollector(host, solar_history, port=configuration.port,
                                            interval=configuration.poll_interval_seconds,
                                            night_schedule=night_schedule,
-                                           reconnect_interval=configuration.reconnect_interval_seconds)
+                                           reconnect_interval=configuration.reconnect_interval_seconds,
+                                           transition_capture_until=configuration.transition_capture_until)
     smlight_collector.start()
     print(f"Radio collector ({configuration.mode}): SMLIGHT at {host}:{configuration.port}")
     try:

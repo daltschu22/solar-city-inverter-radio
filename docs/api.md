@@ -25,6 +25,8 @@ curl 'http://127.0.0.1:8766/api/history?range=24h'
 | `collector.telemetry_stale_after_seconds` | Diagnostic age threshold; derived from the replacement polling interval or the passive freshness setting |
 | `collector.requests`, `collector.responses`, `collector.timeouts` | Replacement polling counters; passive mode counts matched replies in `responses` and leaves the other two at zero |
 | `collector.telemetry` | Identity and diagnostic groups, each with values, observation time, and a stale flag |
+| `collector.transition_capture` | Replacement-mode recorder status: `active`, `until` (Unix seconds), `records`, `last_record_at`, and `error`; off by default |
+| `collector.query_cycle` | Replacement mode: `normal` or `transition`, selected at the last polling opportunity |
 
 In passive mode, `collector.state` starts as `listening`. `packets_observed`
 counts matching Digi data frames, including retries and fragments;
@@ -44,6 +46,8 @@ a separate reply is reused for at most 120 seconds, capped by the passive freshn
 threshold. The following polling-cycle timings apply to replacement mode.
 
 Power normally arrives every two polling intervals (two minutes by default).
+Optional [transition recording](transitions.md) prioritizes state and voltage
+diagnostics near sunrise/sunset while preserving power and energy query slots.
 Retained values stay visible during
 outages, so a number alone is not a fresh measurement. Check its timestamp and
 collector status. Zero is a valid measurement only when actually reported;

@@ -48,7 +48,7 @@ def check(paths):
     for path in paths:
         relative = path.relative_to(ROOT)
         if path.suffix in {".sqlite3", ".sqlite", ".db", ".pcap", ".pcapng", ".log", ".pyc"} or (
-                path.name.endswith(".local.json") or path.name.startswith(".env")
+                path.name.endswith(".local.json") or path.name.startswith((".env", "transition-capture.jsonl"))
                 or IGNORED.intersection(relative.parts)):
             failures.append(f"{relative}: private/runtime artifact tracked")
             continue
