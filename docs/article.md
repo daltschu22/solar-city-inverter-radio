@@ -1,4 +1,4 @@
-# Reading a SolarCity inverter locally: replacement or passive collection
+# Decoding SolarCity Inverter Radio Data
 
 My Power-One solar inverter already had a radio. What I wanted was a local way
 to read it: a small radio bridge, software I could inspect, and measurements stored
