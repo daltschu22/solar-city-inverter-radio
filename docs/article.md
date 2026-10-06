@@ -84,7 +84,7 @@ messages, application acknowledgments, measurement requests, and decoding.
 The repository pins the Python radio dependency to a specific revision so that
 another person can reproduce the same interface.
 
-## A replacement must act as the coordinator
+## Managing the radio network
 
 Reading registers is only part of the job. The inverter expects a coordinator
 that advertises the network and answers the messages needed to stay connected.
