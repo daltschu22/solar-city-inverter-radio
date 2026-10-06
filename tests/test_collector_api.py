@@ -64,6 +64,26 @@ class CollectorApiTests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/api/history?range=invalid")[0], 400)
         self.assertEqual(self.request("GET", "/healthz")[0], 200)
 
+    def test_night_metadata_does_not_create_measurements_or_energy(self):
+        from collector.daylight import NightSchedule
+        from datetime import datetime
+        now = datetime.fromisoformat("2026-10-03T03:00:00-04:00").timestamp()
+        self.history.record([{
+            "capture_id": "evening", "observed_at": now - 8 * 3600,
+            "capture_sweep": 1, "radio_timestamp": 1, "solar_w": -12,
+            "lifetime_wh": 123456,
+        }])
+        with patch.object(collector, "night_schedule", NightSchedule(40.71, -74.01)), \
+                patch("collector.history.time.time", return_value=now):
+            _, body = self.request("GET", "/api/history?range=1h")
+        result = json.loads(body)
+        self.assertEqual(result["night_intervals"], [{"start": now - 3600, "end": now}])
+        self.assertEqual(result["points"], [])
+        self.assertEqual(result["sample_count"], 0)
+        self.assertIsNone(result["generated_wh"])
+        self.assertEqual(self.history.query("all")["sample_count"], 1)
+        self.assertEqual(self.history.latest()["solar_w"], -12)
+
     def test_startup_requires_configured_radio(self):
         with patch.object(collector, "smlight_collector", None):
             self.assertEqual(self.request("GET", "/api/live")[0], 503)

@@ -11,6 +11,12 @@ collection. Choose the radio mode in the
 the dashboard shows listening status and observed exchanges; the original box
 controls the reading frequency. Missing exchanges leave gaps in the graphs.
 
+With `SOLAR_LATITUDE` and `SOLAR_LONGITUDE` set on the collector, missing nighttime
+periods are shown as a muted dashed **estimated 0 W** line between sunset and
+sunrise. Measured readings take precedence, including negative values. Daytime
+gaps remain blank. Estimates do not create database readings or change energy
+totals, sample counts, or the last-response time.
+
 ## On the same computer
 
 Finish [part 1: collection](setup.md) and leave the collector running. In another

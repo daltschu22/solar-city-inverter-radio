@@ -50,7 +50,7 @@ function hasNumber(value) {
 
 function formatPower(value) {
   if (!hasNumber(value)) return "--";
-  const watts = Math.max(0, Number(value));
+  const watts = Number(value);
   return watts >= 1000
     ? `${(watts / 1000).toFixed(2)} kW`
     : `${Math.round(watts)} W`;
@@ -276,7 +276,8 @@ function median(values) {
     : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-function prepareHistory(points, downsampled, pollIntervalSeconds = 60, staleAfterSeconds = null) {
+function prepareHistory(points, downsampled, pollIntervalSeconds = 60, staleAfterSeconds = null,
+  nightIntervals = [], windowStart = null, windowEnd = null) {
   const validPoints = (points || [])
     .filter(
       (point) =>
@@ -284,7 +285,7 @@ function prepareHistory(points, downsampled, pollIntervalSeconds = 60, staleAfte
     )
     .map((point) => ({
       timestamp: Number(point.timestamp),
-      solar_w: Math.max(0, Number(point.solar_w)),
+      solar_w: Number(point.solar_w),
     }))
     .sort((left, right) => left.timestamp - right.timestamp);
 
@@ -321,7 +322,39 @@ function prepareHistory(points, downsampled, pollIntervalSeconds = 60, staleAfte
     series.push([point.timestamp * 1000, point.solar_w]);
   });
 
-  return { validPoints, series, gaps, gapThreshold };
+  // Include the ongoing gap after the last reading, even in a wholly quiet range.
+  if (hasNumber(windowStart) && hasNumber(windowEnd) && windowStart < windowEnd) {
+    const first = validPoints[0];
+    const last = validPoints[validPoints.length - 1];
+    if (!first) gaps.push({ start: windowStart, end: windowEnd });
+    else {
+      if (first.timestamp - windowStart > gapThreshold) {
+        gaps.unshift({ start: windowStart, end: first.timestamp });
+      }
+      if (windowEnd - last.timestamp > gapThreshold) {
+        gaps.push({ start: last.timestamp, end: windowEnd });
+      }
+    }
+  }
+  const estimatedSeries = [];
+  const unknownGaps = [];
+  const nights = (nightIntervals || []).filter(
+    (night) => hasNumber(night.start) && hasNumber(night.end) && night.start < night.end,
+  ).sort((a, b) => a.start - b.start);
+  for (const gap of gaps) {
+    let cursor = gap.start;
+    for (const night of nights) {
+      const start = Math.max(cursor, Number(night.start));
+      const end = Math.min(gap.end, Number(night.end));
+      if (start >= end) continue;
+      if (start > cursor) unknownGaps.push({ start: cursor, end: start, seconds: start - cursor });
+      // Keep measured endpoints, including negative readings, visually distinct.
+      estimatedSeries.push([start * 1000 + 1, 0], [end * 1000 - 1, 0], [end * 1000, null]);
+      cursor = end;
+    }
+    if (cursor < gap.end) unknownGaps.push({ start: cursor, end: gap.end, seconds: gap.end - cursor });
+  }
+  return { validPoints, series, gaps: unknownGaps, gapThreshold, estimatedSeries, windowStart, windowEnd };
 }
 
 function historySymbolSize(series, index) {
@@ -338,7 +371,7 @@ function renderChart(prepared) {
     return;
   }
 
-  const { validPoints, series, gaps } = prepared;
+  const { validPoints, series, gaps, estimatedSeries, windowStart, windowEnd } = prepared;
   const gapBands = gaps.map((gap) => [
     { xAxis: gap.start * 1000 },
     { xAxis: gap.end * 1000 },
@@ -349,7 +382,7 @@ function renderChart(prepared) {
       animationDuration: 250,
       aria: {
         enabled: true,
-        description: `Solar production for ${rangeLabels[selectedRange]}. Missing capture intervals are blank.`,
+        description: `Solar production for ${rangeLabels[selectedRange]}. Dashed nighttime lines estimate zero production. Other missing intervals are blank.`,
       },
       grid: { left: 66, right: 24, top: 46, bottom: 84 },
       toolbox: {
@@ -393,12 +426,14 @@ function renderChart(prepared) {
           if (!reading) return "No verified reading";
           return [
             `<strong>${formatTooltipTime(Number(reading.value[0]))}</strong>`,
-            `${reading.marker}Production&nbsp;&nbsp;<strong>${formatPower(reading.value[1])}</strong>`,
+            `${reading.marker}${reading.seriesName === "Estimated nighttime" ? "Estimated nighttime" : "Production"}&nbsp;&nbsp;<strong>${formatPower(reading.value[1])}</strong>`,
           ].join("<br>");
         },
       },
       xAxis: {
         type: "time",
+        min: hasNumber(windowStart) ? windowStart * 1000 : undefined,
+        max: hasNumber(windowEnd) ? windowEnd * 1000 : undefined,
         boundaryGap: false,
         axisLine: { lineStyle: { color: "#303842" } },
         axisTick: { lineStyle: { color: "#303842" } },
@@ -407,7 +442,7 @@ function renderChart(prepared) {
       },
       yAxis: {
         type: "value",
-        min: 0,
+        min(value) { return Math.min(0, Math.floor(value.min / 50) * 50); },
         max(value) {
           return Math.max(1000, Math.ceil(value.max / 1000) * 1000);
         },
@@ -484,36 +519,50 @@ function renderChart(prepared) {
             data: gapBands,
           },
         },
+        {
+          name: "Estimated nighttime",
+          type: "line",
+          data: estimatedSeries,
+          connectNulls: false,
+          showSymbol: false,
+          lineStyle: { color: "#9ba7b2", width: 2, type: "dashed" },
+          itemStyle: { color: "#9ba7b2" },
+          z: 1,
+        },
       ],
     },
     { notMerge: true },
   );
 
-  if (!validPoints.length) solarChart.clear();
+  if (!validPoints.length && !estimatedSeries.length) solarChart.clear();
 }
 
 function renderHistory(data) {
-  const prepared = prepareHistory(data.points, data.downsampled, data.poll_interval_seconds, data.reading_stale_after_seconds);
+  const prepared = prepareHistory(data.points, data.downsampled, data.poll_interval_seconds,
+    data.reading_stale_after_seconds, data.night_intervals, data.window_start, data.window_end);
   rangePeak.textContent = formatPower(data.peak_w);
   rangeGenerated.textContent = formatEnergy(data.generated_wh);
   sampleCount.textContent = Number(data.sample_count || 0).toLocaleString();
   gapCount.textContent = prepared.gaps.length
     ? prepared.gaps.length.toLocaleString()
     : "None";
-  gapCount.title = `Intervals longer than ${formatDuration(prepared.gapThreshold)}`;
+  gapCount.title = `Missing intervals outside estimated nighttime; capture threshold ${formatDuration(prepared.gapThreshold)}`;
 
   chartEmpty.textContent = data.sample_count
     ? `Only one reading in ${rangeLabels[selectedRange]}`
     : `No verified readings in ${rangeLabels[selectedRange]}`;
-  chartEmpty.hidden = prepared.validPoints.length >= 1;
+  chartEmpty.hidden = prepared.validPoints.length >= 1 || prepared.estimatedSeries.length > 0;
 
   rangeGenerated.title = data.energy_first_at && data.energy_last_at
     ? `Meter difference: ${formatTooltipTime(data.energy_first_at * 1000)} to ${formatTooltipTime(data.energy_last_at * 1000)}`
     : "Requires two lifetime-meter readings";
   const notes = [];
+  if (prepared.estimatedSeries.length) {
+    notes.push("Dashed line: estimated 0 W between sunset and sunrise where readings are missing. Energy totals use measured data.");
+  }
   if (prepared.gaps.length) {
     notes.unshift(
-      `${prepared.gaps.length.toLocaleString()} capture gaps over ${formatDuration(prepared.gapThreshold)} are left blank.`,
+      `${prepared.gaps.length.toLocaleString()} missing intervals outside estimated nighttime are left blank.`,
     );
   }
   if (data.downsampled) {

@@ -8,7 +8,7 @@ const staticDir = path.join(__dirname, "../dashboard/static");
 const html = fs.readFileSync(path.join(staticDir, "index.html"), "utf8");
 const source = fs.readFileSync(path.join(staticDir, "app.js"), "utf8");
 
-function dashboard() {
+function dashboard(withChart = false) {
   const createElement = () => ({
     textContent: "", className: "", hidden: false, children: [],
     append(...children) { this.children.push(...children); },
@@ -19,7 +19,11 @@ function dashboard() {
   ]));
   const context = vm.createContext({
     document: { createElement, querySelector: (id) => nodes.get(id) || null, querySelectorAll: () => [] },
-    window: {}, localStorage: { getItem: () => null },
+    window: withChart ? {
+      echarts: {init: () => ({setOption() {}, clear() {}, on() {}, showLoading() {}, hideLoading() {}}),
+        graphic: {LinearGradient: function() {}}},
+      addEventListener() {},
+    } : {}, localStorage: { getItem: () => null },
     fetch: async () => { throw new Error("Offline"); }, setInterval: () => {},
   });
   vm.runInContext(source, context);
@@ -166,4 +170,40 @@ test("slow collector cadence controls diagnostic freshness and chart gaps", () =
     {timestamp: 1000, solar_w: 500}, {timestamp: 1601, solar_w: 501},
     {timestamp: 2802, solar_w: 502}], false, 300)`);
   assert.equal(history.gaps.length, 1);
+});
+
+test("night estimates fill only missing nighttime and preserve measured negative output", () => {
+  const { run } = dashboard();
+  const result = run(`prepareHistory([
+    {timestamp: 1000, solar_w: -12}, {timestamp: 1120, solar_w: -10},
+    {timestamp: 4000, solar_w: 200}
+  ], false, 60, null, [{start: 1050, end: 3000}], 900, 4500)`);
+  assert.equal(result.series[0][1], -12);
+  assert.equal(result.estimatedSeries[0][0], 1120001);
+  assert.equal(result.estimatedSeries[1][0], 2999999);
+  assert.deepEqual(Array.from(result.gaps, gap => [gap.start, gap.end]), [[3000, 4000], [4000, 4500]]);
+  assert.equal(result.validPoints.length, 3);
+});
+
+test("an empty overnight range shows estimates but an empty daytime range stays unknown", () => {
+  const { run, nodes } = dashboard(true);
+  run(`renderHistory({points: [], sample_count: 0, window_start: 1000, window_end: 2000,
+    night_intervals: [{start: 900, end: 2500}]})`);
+  assert.equal(nodes.get("#chart-empty").hidden, true);
+  assert.match(nodes.get("#chart-help").textContent, /estimated 0 W/);
+  assert.equal(nodes.get("#range-generated").textContent, "--");
+  const daytime = run(`prepareHistory([], false, 60, null, [], 3000, 4000)`);
+  assert.equal(daytime.estimatedSeries.length, 0);
+  assert.equal(daytime.gaps.length, 1);
+});
+
+test("real nighttime readings split estimates and sunrise ends the estimate", () => {
+  const { run } = dashboard();
+  const result = run(`prepareHistory([{timestamp: 2000, solar_w: 15}], false, 60, null,
+    [{start: 1000, end: 3000}], 500, 4000)`);
+  assert.deepEqual(Array.from(result.estimatedSeries, point => Array.from(point)), [
+    [1000001, 0], [1999999, 0], [2000000, null],
+    [2000001, 0], [2999999, 0], [3000000, null],
+  ]);
+  assert.deepEqual(Array.from(result.gaps, gap => [gap.start, gap.end]), [[500, 1000], [3000, 4000]]);
 });

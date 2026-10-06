@@ -19,6 +19,28 @@ class NightSchedule:
         return (sunrise(self.observer, date=day).timestamp(),
                 sunset(self.observer, date=day).timestamp())
 
+    def night_intervals(self, start, end):
+        """Sunset-to-sunrise windows for chart estimates, never measurements."""
+        if start is None or end is None or not start < end:
+            return []
+        day = datetime.fromtimestamp(start, timezone.utc).date() - timedelta(days=1)
+        last_day = datetime.fromtimestamp(end, timezone.utc).date()
+        intervals = []
+        while day <= last_day:
+            try:
+                rising, setting = self.events(day)
+                if rising <= setting:
+                    rising, _ = self.events(day + timedelta(days=1))
+            except ValueError:
+                # Polar days/nights do not provide an ordinary pair of events.
+                day += timedelta(days=1)
+                continue
+            left, right = max(start, setting), min(end, rising)
+            if left < right:
+                intervals.append({"start": left, "end": right})
+            day += timedelta(days=1)
+        return intervals
+
     def standby_until(self, reading, now):
         if not reading:
             return None

@@ -52,6 +52,29 @@ class DaylightTests(unittest.TestCase):
         polar = NightSchedule(89, 0)
         self.assertIsNone(polar.standby_until(self.reading, timestamp("2026-10-02T22:00:00-04:00")))
 
+    def test_night_windows_clip_to_requested_range_and_stop_at_sunrise(self):
+        start = timestamp("2026-10-02T12:00:00-04:00")
+        end = timestamp("2026-10-04T12:00:00-04:00")
+        windows = self.schedule.night_intervals(start, end)
+        self.assertEqual(len(windows), 2)
+        for window in windows:
+            self.assertGreater(window["end"] - window["start"], 10 * 3600)
+            self.assertLess(window["end"] - window["start"], 15 * 3600)
+        self.assertEqual(self.schedule.night_intervals(windows[0]["start"] + 60,
+                         windows[0]["end"] - 60),
+                         [{"start": windows[0]["start"] + 60, "end": windows[0]["end"] - 60}])
+        self.assertEqual(self.schedule.night_intervals(windows[0]["end"], windows[1]["start"]), [])
+        self.assertEqual(self.schedule.night_intervals(None, end), [])
+        self.assertEqual(NightSchedule(89, 0).night_intervals(start, end), [])
+
+    def test_eastern_longitude_nights_do_not_span_daylight(self):
+        schedule = NightSchedule(-36.85, 174.76)
+        windows = schedule.night_intervals(timestamp("2026-10-02T00:00:00+00:00"),
+                                          timestamp("2026-10-05T00:00:00+00:00"))
+        self.assertGreaterEqual(len(windows), 3)
+        for window in windows:
+            self.assertLess(window["end"] - window["start"], 14 * 3600)
+
 
 if __name__ == "__main__":
     unittest.main()

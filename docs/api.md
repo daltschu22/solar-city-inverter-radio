@@ -73,6 +73,13 @@ Passive history returns `poll_interval_seconds: null` and
 `reading_stale_after_seconds` for chart-gap handling. It uses the same points and
 storage format as replacement mode.
 
+History also includes `window_start` and `window_end` (Unix seconds) and
+`night_intervals` (`start`/`end` pairs). With `SOLAR_LATITUDE` and
+`SOLAR_LONGITUDE` configured, these intervals describe sunset through sunrise,
+clipped to the requested window and the current time. Otherwise the list is
+empty. They are display metadata for estimated zero generation, not observations;
+`points`, counts, peaks, and energy totals remain measured data.
+
 ## Process health: `GET /healthz`
 
 Returns `200` while the HTTP service responds. Use `/api/live` to determine radio

@@ -17,6 +17,7 @@ SOLAR_HISTORY_PATH = Path(os.environ.get("SOLAR_HISTORY_PATH", ROOT / "data" / "
 
 solar_history = None
 smlight_collector = None
+night_schedule = None
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -56,6 +57,9 @@ class Handler(BaseHTTPRequestHandler):
             range_name = urllib.parse.parse_qs(parsed.query).get("range", ["24h"])[0]
             try:
                 history = solar_history.query(range_name)
+                history["night_intervals"] = night_schedule.night_intervals(
+                    history["window_start"], history["window_end"]
+                ) if night_schedule else []
                 if smlight_collector is not None:
                     history["poll_interval_seconds"] = smlight_collector.interval
                     if smlight_collector.interval is None:
@@ -99,7 +103,7 @@ def secure_runtime_file_permissions():
 
 
 def main():
-    global solar_history, smlight_collector
+    global solar_history, smlight_collector, night_schedule
     from collector.config import require_configured
     try:
         configuration = require_configured()

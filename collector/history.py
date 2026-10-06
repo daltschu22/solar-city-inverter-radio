@@ -115,7 +115,8 @@ class SolarHistoryStore:
             raise ValueError("Unknown history range")
 
         duration = self.RANGE_SECONDS[range_name]
-        start = time.time() - duration if duration else None
+        now = time.time()
+        start = now - duration if duration else None
         where = "WHERE observed_at >= ?" if start is not None else ""
         parameters = (start,) if start is not None else ()
 
@@ -187,6 +188,8 @@ class SolarHistoryStore:
 
         return {
             "range": range_name,
+            "window_start": start if start is not None else summary["first_at"],
+            "window_end": now,
             "retention": "unlimited",
             "sample_count": sample_count,
             "point_count": len(rows),
