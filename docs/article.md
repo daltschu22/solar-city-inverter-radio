@@ -65,7 +65,7 @@ These details matter: ordinary Zigbee hardware does not make every Zigbee
 application compatible. This project implements the particular network and
 application behavior the inverter expects.
 
-## Using a network radio from Python
+## Connecting to the radio
 
 The SLZB-06U exposes its radio through a network serial bridge. That lets the
 collector run on a machine with no USB connection to the radio.
