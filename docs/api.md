@@ -20,6 +20,8 @@ curl 'http://127.0.0.1:8766/api/history?range=24h'
 | `collector.connected` | Whether the collector's bridge session is connected |
 | `collector.mode` | `replacement` or `passive`; top-level `mode` remains `smlight` for the transport |
 | `collector.state` | Current status, such as `live`, `stale`, `discovering`, or `standby` |
+| `collector.last_error` | Connection or network status detail, or `null` |
+| `collector.last_query_error` | Replacement mode: latest query failure, cleared by the next validated query response; independent of power freshness |
 | `collector.interval_seconds` | Replacement query interval (default 60); `null` in passive mode |
 | `collector.reconnect_interval_seconds` | Delay before retrying a failed radio session; defaults to 15 |
 | `collector.telemetry_stale_after_seconds` | Diagnostic age threshold; derived from the replacement polling interval or the passive freshness setting |
@@ -46,6 +48,11 @@ a separate reply is reused for at most 120 seconds, capped by the passive freshn
 threshold. The following polling-cycle timings apply to replacement mode.
 
 Power normally arrives every two polling intervals (two minutes by default).
+In replacement mode, power becomes stale after three polling intervals without a
+validated power reading. A failed power, energy, or diagnostic query is reported
+separately in `last_query_error`; it does not immediately make a recent power
+reading stale. Successful diagnostic replies do not refresh power timestamps.
+Disconnects, collector conflicts, and network departures retain their own status.
 Optional [transition recording](transitions.md) prioritizes state and voltage
 diagnostics near sunrise/sunset while preserving power and energy query slots.
 Retained values stay visible during

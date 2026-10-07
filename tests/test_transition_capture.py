@@ -197,6 +197,30 @@ class RecordedCollectorTests(unittest.TestCase):
         self.assertEqual([item["kind"] for item in queries], list(TRANSITION_CYCLE) + ["power"])
         self.assertTrue(all(b["at"] - a["at"] == 60 for a, b in zip(queries, queries[1:])))
 
+    def test_summary_separates_query_delivery_from_network_traffic_and_reply_timeouts(self):
+        # The same final radio status can precede a valid response or a timeout.
+        # Retain both observations rather than treating delivery status as a reading.
+        with patch("collector.transition_capture.time.time", return_value=100):
+            capture = self.collector.capture
+            capture.record("tx", purpose="network_reply", kind=None, raw="")
+            capture.record("tx_result", purpose="network_reply", kind=None, status=17)
+            capture.record("tx", purpose="query", kind="power", raw="")
+            capture.record("tx_result", purpose="query", kind="power", status=17)
+            capture.record("query_timeout", kind="power", tx_status=17)
+            capture.record("tx", purpose="query", kind="inverter_dc", raw="")
+            capture.record("tx_result", purpose="query", kind="inverter_dc", status=0)
+        with patch("collector.transition_capture.time.time", return_value=3700):
+            capture.record("query_timeout", kind="inverter_dc", tx_status=0)
+        report = summarize([capture.path])
+        self.assertEqual(report["query_outcomes_by_kind"], {
+            "power": {"queries": 1, "tx_status_17": 1, "timeout_tx_status_17": 1},
+            "inverter_dc": {"queries": 1, "tx_status_0": 1, "timeout_tx_status_0": 1},
+        })
+        hours = list(report["query_outcomes_by_hour_utc"].values())
+        self.assertEqual(hours[0]["queries"], 2)
+        self.assertEqual(hours[0]["tx_status_17"], 1)
+        self.assertEqual(hours[1], {"timeout_tx_status_0": 1})
+
     def test_summary_reports_states_gaps_and_unknown_frames_without_identities(self):
         first = self.frame()
         self.collector.capture_frame(first, "power")
@@ -217,6 +241,7 @@ class RecordedCollectorTests(unittest.TestCase):
         report = summarize([self.collector.capture.path])
         self.assertEqual(report["invalid_or_incomplete_lines"], 1)
         self.assertEqual(report["unaccepted_application_frames"], {"startup_hello": 1})
+        self.assertEqual(sum(item["event"] == "startup_hello" for item in report["timeline"]), 1)
         self.assertEqual(len(report["power_gaps_over_180_seconds"]), 1)
         self.assertAlmostEqual(report["power_gaps_over_180_seconds"][0]["seconds"], 600, places=1)
         states = [item for item in report["timeline"] if item["event"] == "operating_state"]

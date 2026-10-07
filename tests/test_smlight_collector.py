@@ -194,6 +194,64 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(payload["solar_w"], 500.0)
         self.assertEqual(payload["collector"]["state"], "stale")
 
+    def test_query_failures_keep_recent_power_live_until_its_own_deadline(self):
+        for kind in ("power", "energy", "inverter_ac", "inverter_dc"):
+            for delivery in (0, 17):
+                with self.subTest(kind=kind, delivery=delivery):
+                    self.collector = SmlightCollector("radio.test", self.history)
+                    session = Mock(firmware="test")
+                    clock, start = [0], time.time()
+                    events = iter([(1, device_announce()), (31, None), (32, self.frame()),
+                                   (91, None), (92, None), (97, None), (98, None)])
+
+                    def receive():
+                        clock[0], frame = next(events)
+                        if clock[0] in (92, 98):
+                            status = self.collector.snapshot()
+                            self.assertEqual(status["state"], "live")
+                            self.assertIsNone(status["last_error"])
+                            self.assertEqual(status["last_reading_at"], start + 32)
+                            if clock[0] == 98 or delivery:
+                                self.assertIn(kind, status["last_query_error"])
+                        if clock[0] == 98:
+                            self.collector.stop_event.set()
+                        return dict(frame, observed_at=start + clock[0], rssi=-70) if frame else None
+
+                    session.receive.side_effect = receive
+                    session.transmit.side_effect = lambda frame: (
+                        delivery if frame == b"query" and clock[0] >= 91 else 0)
+                    with patch("collector.smlight_collector.time.monotonic", side_effect=lambda: clock[0]), \
+                            patch("collector.smlight_collector.time.time", side_effect=lambda: start + clock[0]), \
+                            patch("collector.smlight_collector.QUERY_CYCLE", ("power", kind)), \
+                            patch("collector.smlight_collector.read_request", return_value=b"query"):
+                        self.collector.run_session(session)
+                        self.assertEqual(self.collector.snapshot()["timeouts"], 1)
+                        clock[0] = 212
+                        self.assertEqual(self.collector.snapshot()["state"], "live")
+                        clock[0] = 213
+                        self.assertEqual(self.collector.snapshot()["state"], "stale")
+                        # A successful non-power reply clears the query warning,
+                        # but cannot make overdue power fresh again.
+                        with patch("collector.smlight_collector.response_values", return_value={"lifetime_wh": 1000}):
+                            self.collector.accept_response(self.frame(2, start + 213), "energy")
+                        status = self.collector.snapshot()
+                        self.assertIsNone(status["last_query_error"])
+                        self.assertEqual(status["state"], "stale")
+                        self.assertEqual(status["last_reading_at"], start + 32)
+
+    def test_recent_power_never_overrides_network_or_connection_errors(self):
+        self.collector.accept_response(self.frame(), "power")
+        for state, connected, detail in (("waiting", True, "Inverter left the radio network"),
+                                         ("disconnected", False, "Bridge offline"),
+                                         ("conflict", False, "Old collector is on")):
+            with self.subTest(state=state):
+                self.collector.update(state=state, connected=connected, last_error=detail,
+                                      last_query_error="Earlier query timed out")
+                status = self.collector.snapshot()
+                self.assertEqual(status["state"], state)
+                self.assertEqual(status["last_error"], detail)
+                self.assertEqual(self.history.latest()["solar_w"], 500.0)
+
     def test_empty_history_has_no_fabricated_reading_or_timestamp(self):
         with patch.object(collector, "solar_history", self.history), patch.object(
             collector, "smlight_collector", self.collector
@@ -353,7 +411,7 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(status["responses"], 0)
         self.assertEqual(status["last_query_kind"], "power")
         self.assertEqual(status["last_query_tx_status"], 17)
-        self.assertIn("status 17", status["last_error"])
+        self.assertIn("status 17", status["last_query_error"])
         self.assertIsNone(self.history.latest())
 
     def test_failure_closes_radio_and_retries_until_stopped(self):

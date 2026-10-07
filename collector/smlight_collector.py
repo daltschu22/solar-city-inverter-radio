@@ -193,6 +193,7 @@ class SmlightCollector:
             "last_poll_at": None, "last_reading_at": None,
             "last_packet_at": None, "inverter_address": None, "rssi": None,
             "requests": 0, "responses": 0, "timeouts": 0, "last_error": None,
+            "last_query_error": None,
             "query_tx_failures": 0, "last_query_kind": None, "last_query_tx_status": None,
             "network_transmissions": 0, "network_replies": 0, "network_tx_failures": 0,
             "connected": False, "firmware": None,
@@ -307,6 +308,7 @@ class SmlightCollector:
         self.seen.append(identity)
         with self.lock:
             self.status["responses"] += 1
+            self.status["last_query_error"] = None
         if self.capture.active():
             decoded = self.telemetry.snapshot().get(kind, {}).get("values", {})
             self.capture.record("response", kind=kind, observed_at=frame["observed_at"],
@@ -409,7 +411,7 @@ class SmlightCollector:
                     self.status["timeouts"] += 1
                 detail = (f"Radio delivery failed (status {tx_status}); no {pending} reply"
                           if tx_status != 0 else f"Inverter did not answer the latest {pending} query")
-                self.update(state="stale", last_error=detail)
+                self.update(last_query_error=detail)
                 self.capture.record("query_timeout", kind=pending, tx_status=tx_status)
                 print("Solar query timeout:", pending, "radio status", tx_status, flush=True)
                 pending = None
@@ -431,7 +433,7 @@ class SmlightCollector:
                 if tx_status != 0:
                     with self.lock:
                         self.status["query_tx_failures"] += 1
-                    self.update(state="stale", last_error=f"Radio delivery failed (status {tx_status})")
+                    self.update(last_query_error=f"Radio delivery failed (status {tx_status}); no {pending} reply")
                 response_deadline = time.monotonic() + 5
                 last_radio_activity = time.monotonic()
             if now - last_radio_activity > 90:

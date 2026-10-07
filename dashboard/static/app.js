@@ -214,7 +214,7 @@ function renderLive(data) {
     : hasNumber(collector.interval_seconds) && Number(collector.interval_seconds) > 0
       ? Number(collector.interval_seconds) * 3 : 180;
   const fresh = timestamp !== null && Date.now() / 1000 - timestamp <= freshnessSeconds;
-  powerLabel.textContent = fresh ? "Producing now" : "Last verified output";
+  powerLabel.textContent = fresh && state === "live" ? "Producing now" : "Last verified output";
 
   statusDot.className = `dot ${state}`;
   collectorState.textContent = passive && state === "live" ? "Listening" : collectorLabel(state);
@@ -222,7 +222,7 @@ function renderLive(data) {
   statusDetail.textContent = standby
     ? `Inverter likely asleep; SMLIGHT online.${hasNumber(collector.standby_until)
       ? ` Sunrise ${new Date(collector.standby_until * 1000).toLocaleTimeString([], {hour: "numeric", minute: "2-digit"})}.` : ""}`
-    : collector.last_error || collector.warning || (fresh
+    : collector.last_error || collector.last_query_error || collector.warning || (fresh
     ? "Verified inverter response"
     : timestamp !== null ? "Last verified reading is preserved" : "Awaiting inverter reading");
 

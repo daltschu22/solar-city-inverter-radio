@@ -123,6 +123,22 @@ test("server failure preserves output but removes the live label", async () => {
   assert.equal(nodes.get("#status-text").textContent, "Dashboard unavailable");
 });
 
+test("query warnings preserve live power while connection errors take precedence", () => {
+  const { run, nodes } = dashboard();
+  run(`var sample = {solar_w: 500, timestamp: Date.now()/1000 - 65,
+    collector: {state: "live", interval_seconds: 60,
+      last_query_error: "No inverter_ac reply"}};
+    renderLive(sample);`);
+  assert.equal(nodes.get("#power-label").textContent, "Producing now");
+  assert.equal(nodes.get("#status-text").textContent, "Receiving solar readings");
+  assert.equal(nodes.get("#status-detail").textContent, "No inverter_ac reply");
+  run(`sample.collector.state = "disconnected";
+    sample.collector.last_error = "Bridge offline"; renderLive(sample);`);
+  assert.equal(nodes.get("#power-label").textContent, "Last verified output");
+  assert.equal(nodes.get("#current-power").textContent, "500 W");
+  assert.equal(nodes.get("#status-detail").textContent, "Bridge offline");
+});
+
 test("nighttime standby is neutral and preserves the real reading and age", async () => {
   const { run, nodes } = dashboard();
   await Promise.resolve();

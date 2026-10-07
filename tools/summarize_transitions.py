@@ -2,7 +2,7 @@
 """Summarize saved transition captures without opening a radio connection."""
 
 import argparse
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 import json
 import math
@@ -31,6 +31,7 @@ def stamp(at):
 
 def summarize(paths):
     counts, queries, tx_statuses = Counter(), Counter(), Counter()
+    by_hour, by_kind = defaultdict(Counter), defaultdict(Counter)
     accepted = set()
     responses, radio_times, heartbeats, timeline = [], [], [], []
     first = last = None
@@ -43,11 +44,26 @@ def summarize(paths):
         first = min(first, at) if first is not None else at
         last = max(last, at) if last is not None else at
         counts[event] += 1
+        outcome = None
+        if event == "tx" and item.get("purpose") == "query":
+            outcome = "queries"
+        elif event == "tx_result" and item.get("purpose") == "query":
+            outcome = f"tx_status_{item['status']}"
+        elif event == "response":
+            outcome = "responses"
+        elif event == "query_timeout":
+            outcome = f"timeout_tx_status_{item['tx_status']}"
+        if outcome:
+            hour = datetime.fromtimestamp(at, timezone.utc).strftime("%Y-%m-%dT%H:00:00+00:00")
+            by_hour[hour][outcome] += 1
+            by_kind[item["kind"]][outcome] += 1
         if event == "response":
             accepted.add(tuple(item["frame_id"]))
             responses.append(item)
         elif event == "rx" and item.get("inverter"):
             radio_times.append(item["frame"]["observed_at"])
+            if item["frame"].get("application_payload") == "f400010101":
+                timeline.append({"at": item["frame"]["observed_at"], "event": "startup_hello"})
         elif event == "heartbeat":
             heartbeats.append(at)
         elif event == "tx" and item["purpose"] == "query":
@@ -95,6 +111,8 @@ def summarize(paths):
         "last_record": stamp(last) if last is not None else None,
         "event_counts": dict(counts), "invalid_or_incomplete_lines": invalid,
         "query_counts": dict(queries), "final_tx_status_counts": dict(tx_statuses),
+        "query_outcomes_by_hour_utc": {hour: dict(by_hour[hour]) for hour in sorted(by_hour)},
+        "query_outcomes_by_kind": {kind: dict(by_kind[kind]) for kind in sorted(by_kind)},
         "unaccepted_application_frames": dict(unaccepted),
         "power_gaps_over_180_seconds": gaps, "heartbeat_gaps_over_120_seconds": heartbeat_gaps,
         "last_inverter_packet": stamp(max(radio_times)) if radio_times else None,

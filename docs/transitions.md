@@ -92,6 +92,12 @@ uv run python tools/summarize_transitions.py data/transition-capture.jsonl*
 
 This opens files only. It reports state changes, query/delivery counts, network
 events, gaps between power observations, and gaps between recorder heartbeats.
+Startup `F4` messages appear on the timeline. Query outcomes are grouped by read
+kind and UTC hour so repeated dawn periods can be compared separately from normal
+daytime operation. Network maintenance and acknowledgments are excluded from
+those query groups. Each event belongs to the hour when it was recorded; a query
+and its response or timeout can fall in adjacent hours. A failed radio delivery
+status and an accepted response can both be recorded for the same query.
 The summary omits raw frames and equipment identities; review its timestamps and
 measurements before sharing. The fixed 180-second power-gap threshold is a review
 aid; longer configured polling intervals naturally produce such gaps.
@@ -113,9 +119,40 @@ considered before drawing conclusions from missing events.
 
 ## Follow-up tests
 
-Per-input MPPT measurements, manufacturer-specific faults, and stored-history
-retrieval need verified register addresses or command documentation for this
-firmware. Do not infer them from LCD menus or the wired Aurora protocol.
+### Startup polling
+
+Compare radio traffic, startup messages, first validated replies, and query
+outcomes across several mornings. Radio traffic can precede measurement replies;
+it does not establish that the measurement service is ready. Test any proposed
+startup backoff against both startup-message captures and already-joined sessions
+that begin answering without `F4`. Keep network replies active, use a bounded
+delay, and preserve the normal query cadence after measurements resume.
+
+### Per-input measurements
+
+SunSpec's [model 160 definition](https://github.com/sunspec/models/blob/master/json/model_160.json)
+describes repeated input measurements, including DC current, voltage, power, and
+energy. Its availability and location on this radio interface remain unverified.
+The [ABB/Power-One SunSpec integration](https://github.com/alexdelprete/ha-abb-powerone-pvi-sunspec)
+supports that model on other monitoring interfaces; its fixed addresses do not
+establish a map for the SolarCity radio adapter.
+
+The next live discovery should follow model headers rather than scan arbitrary
+registers. On the tested map, model 101 starts at 40069 with length 50, placing
+the next model header at 40121. Read a model's ID and length with Modbus function
+3, then advance by its length plus two header words. Bound the walk and stop on
+the SunSpec end marker, invalid lengths, or repeated read failures. Inventory
+headers before requesting model-specific data. Keep discovery serialized through
+the collector's existing connection and within the existing polling budget.
+
+### Stored history and faults
+
+The family manuals describe saved statistics, but do not document their retrieval
+over this Modbus radio interface. Cumulative energy counters alone cannot recover
+the timing or shape of a missing power interval. Establish whether an available
+history command returns interval samples or only daily totals before designing an
+importer. Manufacturer-specific fault registers also need a verified mapping;
+zero event bits during a normal transition do not validate fault decoding.
 
 For each feature, first confirm its read-only request and response against live
 observations, then add offline decoding tests before enabling it in collection.
